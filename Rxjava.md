@@ -149,3 +149,36 @@ D/MainActivity2: 开始订阅事件
 D/MainActivity2: 收到事件 1
 D/MainActivity2: 流程结束
 ```
+
+timer()
+
+延迟指定的时间后，发送1个数值0（Long类型）
+
+本质 = 延迟指定时间后，调用一次 `onNext(0)`
+
+一般用于检测
+
+```kotlin
+Observable.timer(2, TimeUnit.SECONDS).subscribe(object : Observer<Long> {
+    override fun onSubscribe(d: Disposable) {
+        Log.d(TAG, "开始订阅")
+    }
+
+    override fun onNext(t: Long) {
+        Log.d(TAG, "收到事件 $t")
+    }
+
+    override fun onError(e: Throwable) {
+
+    }
+
+    override fun onComplete() {
+        Log.d(TAG, "流程结束")
+    }
+})
+
+D/MainActivity2: 开始订阅
+D/MainActivity2: 收到事件 0
+D/MainActivity2: 流程结束
+```
+
