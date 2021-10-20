@@ -54,3 +54,6 @@
 - 为什么Entry要用弱引用？
 
   如果Entry是强引用，只要Thread不退出，线程会一直持有ThreadLocalMap，ThreadLocalMap中Entry会强应用ThreadLocal对象，即使threadLocal = null，也不能被回收。
+
+  ![](https://pics3.baidu.com/feed/242dd42a2834349b79fe653d508c16c837d3be7e.jpeg?token=4b047410f2c7c94baf88bc42b6f6bca8&s=4B62B85293E44D0B0AC11F6E03009074)
+
