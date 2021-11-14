@@ -260,6 +260,83 @@
       }
   ```
 
+### 重要的类
+
+1. Dispatcher：调度器，有两个重要的方法，enqueue()和execute()，分别标识异步任务和同步任务，把当前任务送入运行队列。
+
+2. RealCall和AsyncCall，真正执行请求的位置（最终都开始执行拦截器）
+
+   ```java
+   // 异步：AsyncCall本质是一个Runnable，真正执行的位置在Dispatcher中promoteAndExecute()
+   asyncCall.executeOn(executorService());
+   
+   @Override protected void execute() {
+         boolean signalledCallback = false;
+         transmitter.timeoutEnter();
+         try {
+             // 拦截器开始工作
+           Response response = getResponseWithInterceptorChain();
+           signalledCallback = true;
+           responseCallback.onResponse(RealCall.this, response);
+         } catch (IOException e) {
+           if (signalledCallback) {
+             // Do not signal the callback twice!
+             Platform.get().log(INFO, "Callback failure for " + toLoggableString(), e);
+           } else {
+             responseCallback.onFailure(RealCall.this, e);
+           }
+         } catch (Throwable t) {
+           cancel();
+           if (!signalledCallback) {
+             IOException canceledException = new IOException("canceled due to " + t);
+             canceledException.addSuppressed(t);
+             responseCallback.onFailure(RealCall.this, canceledException);
+           }
+           throw t;
+         } finally {
+           client.dispatcher().finished(this);
+         }
+       }
+     }
+   
+   //同步：RealCall#execute()
+   @Override public Response execute() throws IOException {
+       synchronized (this) {
+         if (executed) throw new IllegalStateException("Already Executed");
+         executed = true;
+       }
+       transmitter.timeoutEnter();
+       transmitter.callStart();
+       try {
+         client.dispatcher().executed(this);
+         // 拦截器开始工作
+         return getResponseWithInterceptorChain();
+       } finally {
+         client.dispatcher().finished(this);
+       }
+     }
+   ```
+
+3. 拦截器
+
+   拦截器按添加的顺序执行
+
+   ```java
+   interceptors.addAll(client.interceptors()); // 用户自定义的拦截器，最早执行
+   interceptors.add(new RetryAndFollowUpInterceptor(client));
+   interceptors.add(new BridgeInterceptor(client.cookieJar()));
+   interceptors.add(new CacheInterceptor(client.internalCache()));
+   interceptors.add(new ConnectInterceptor(client));
+   if (!forWebSocket) {
+     interceptors.addAll(client.networkInterceptors());
+   }
+   interceptors.add(new CallServerInterceptor(forWebSocket));
+   ```
+
+4. OkHttpClient
+
+   OkHttp使用入口，封装了Dispatcher使用户无感知，Call任务的工厂，官方建议把OkHttpClient设计为单例模式，这样可以减少连接、重复请求，即复用了OkHttpClient内部的连接池和线程池
+
 ### 拦截器分析
 
 #### 自定义拦截器
