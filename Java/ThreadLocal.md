@@ -57,3 +57,12 @@
 
   ![](https://pics3.baidu.com/feed/242dd42a2834349b79fe653d508c16c837d3be7e.jpeg?token=4b047410f2c7c94baf88bc42b6f6bca8&s=4B62B85293E44D0B0AC11F6E03009074)
 
+### ThreadLocal Q&A
+
+1. Java会应用在什么地方
+
+   Android：通过ThreadLocal为每个线程存放一个Looper对象
+
+2. ThreadLocal会产生内存泄漏你了解吗？
+
+   ThreadLocal存放在ThreadLocalMap（静态变量，生命周期同线程），ThreadLocalMap持有Entry，Entry如果强引用ThreadLocal，即使引用ThreadLocal对象的变量置空，ThreadLocal也会被ThreadLocalMap间接持有，导致泄露
