@@ -99,6 +99,7 @@
                        Log.d(tag, "response ${response.body()?.string()}")
                    }
                })
+  ```
 ```
   
   1. 发送http请求，首先构造一个Request对象，Request对象对应一个http请求，参数最少有一个url，此外还可以通过Reuqest.Builder添加参数，例如addHeader()、method("PUT", body)
@@ -119,10 +120,10 @@
         transmitter.callStart();
         client.dispatcher().enqueue(new AsyncCall(responseCallback));
       }
-    ```
-  
+```
+
     Dispatcher#enqueue()
-  
+      
     ```java
     void enqueue(AsyncCall call) {
         synchronized (this) {
@@ -179,9 +180,9 @@
         return isRunning;
       }
     ```
-  
+      
     AsyncCall#executeOn(ExecutorService executorService)
-  
+      
     ```java
     // 将call放入线程池执行
      void executeOn(ExecutorService executorService) {
@@ -202,7 +203,7 @@
           }
         }
     ```
-  
+
 - post请求
 
   ```kotlin
@@ -372,4 +373,14 @@
           client.readTimeoutMillis(), client.writeTimeoutMillis());
           ......
   }
+  ```
+  
+- 自定义一个日志拦截器
+
+  ```kotlin
+  OkHttpClient.builder.addInterceptor(HttpLoggingInterceptor(object : HttpLoggingInterceptor.Logger {
+                      override fun log(message: String) {
+                          ComponentCenter.doLog("okHttp: $message")
+                      }
+                  })
   ```
