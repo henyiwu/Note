@@ -1,6 +1,6 @@
 [toc]
 
-## Rxjava
+## Rxjava 创建&发送事件的方式
 
 ### Create
 
@@ -150,7 +150,7 @@ D/MainActivity2: 收到事件 1
 D/MainActivity2: 流程结束
 ```
 
-timer()
+### timer()
 
 延迟指定的时间后，发送1个数值0（Long类型）
 
