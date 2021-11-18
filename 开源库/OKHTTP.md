@@ -525,6 +525,297 @@
 
   总结，责任链的处理顺序：RealInterceptorChain#process()->块A->RealInterceptorChain#process()->块B......直到责任链最后一块CallServerInterceptor，没有继续往下传递事件，获得服务器返回的结果。
 
+#### RetryAndFollowUpInterceptor
+
+> 重试和重定向连接器
+
+- intercept
+
+  ```kotlin
+  @Throws(IOException::class)
+    override fun intercept(chain: Interceptor.Chain): Response {
+      val realChain = chain as RealInterceptorChain
+      var request = chain.request
+      val call = realChain.call
+      var followUpCount = 0
+      var priorResponse: Response? = null
+      var newExchangeFinder = true
+      var recoveredFailures = listOf<IOException>()
+      while (true) {
+        // 创建ExchangeFilder对象，从连接池获取可复用的链接
+        call.enterNetworkInterceptorExchange(request, newExchangeFinder)
+  
+        var response: Response
+        var closeActiveExchange = true
+        try {
+          if (call.isCanceled()) {
+            throw IOException("Canceled")
+          }
+  
+          try {
+            // 执行下一个责任链
+            response = realChain.proceed(request)
+            newExchangeFinder = true
+          } catch (e: RouteException) {
+            // 与服务器建立连接失败，如果是可恢复的（根据recover方法判断）
+            // 则尝试重新建立连接
+            if (!recover(e.lastConnectException, call, request, requestSendStarted = false)) {
+              throw e.firstConnectException.withSuppressed(recoveredFailures)
+            } else {
+              recoveredFailures += e.firstConnectException
+            }
+            newExchangeFinder = false
+            continue
+          } catch (e: IOException) {
+            if (!recover(e, call, request, requestSendStarted = e !is ConnectionShutdownException)) {
+              throw e.withSuppressed(recoveredFailures)
+            } else {
+              recoveredFailures += e
+            }
+            newExchangeFinder = false
+            continue
+          }
+  
+          // Attach the prior response if it exists. Such responses never have a body.
+          if (priorResponse != null) {
+            response = response.newBuilder()
+                .priorResponse(priorResponse.newBuilder()
+                    .body(null)
+                    .build())
+                .build()
+          }
+  
+          val exchange = call.interceptorScopedExchange
+          // 根据返回的状态码，确定是否需要重定向，不需要返回null
+          val followUp = followUpRequest(response, exchange)
+  
+          if (followUp == null) {
+            if (exchange != null && exchange.isDuplex) {
+              call.timeoutEarlyExit()
+            }
+            closeActiveExchange = false
+            return response
+          }
+  
+          val followUpBody = followUp.body
+          if (followUpBody != null && followUpBody.isOneShot()) {
+            closeActiveExchange = false
+            return response
+          }
+  
+          response.body?.closeQuietly()
+  
+          // 重定向次数超过最大限制抛异常
+          if (++followUpCount > MAX_FOLLOW_UPS) {
+            throw ProtocolException("Too many follow-up requests: $followUpCount")
+          }
+  
+          request = followUp
+          priorResponse = response
+        } finally {
+          // ExchangeFinder置空和退出连接
+          call.exitNetworkInterceptorExchange(closeActiveExchange)
+        }
+      }
+    }
+  ```
+
+#### BridgeInterceptor
+
+> 在request阶段：配置请求头信息，cookie信息
+>
+> 在response阶段：处理并保存返回的cookie信息，判断是否需要gzip压缩等
+
+- BridgeInterceptor
+
+  ```kotlin
+  @Throws(IOException::class)
+    override fun intercept(chain: Interceptor.Chain): Response {
+      val userRequest = chain.request()
+      val requestBuilder = userRequest.newBuilder()
+  
+      // 配置请求头信息
+      val body = userRequest.body
+      if (body != null) {
+        val contentType = body.contentType()
+        if (contentType != null) {
+          requestBuilder.header("Content-Type", contentType.toString())
+        }
+  
+        val contentLength = body.contentLength()
+        if (contentLength != -1L) {
+          requestBuilder.header("Content-Length", contentLength.toString())
+          requestBuilder.removeHeader("Transfer-Encoding")
+        } else {
+          requestBuilder.header("Transfer-Encoding", "chunked")
+          requestBuilder.removeHeader("Content-Length")
+        }
+      }
+  
+      if (userRequest.header("Host") == null) {
+        requestBuilder.header("Host", userRequest.url.toHostHeader())
+      }
+  
+      if (userRequest.header("Connection") == null) {
+        requestBuilder.header("Connection", "Keep-Alive")
+      }
+  
+      // If we add an "Accept-Encoding: gzip" header field we're responsible for also decompressing
+      // the transfer stream.
+      var transparentGzip = false
+      if (userRequest.header("Accept-Encoding") == null && userRequest.header("Range") == null) {
+        transparentGzip = true
+        requestBuilder.header("Accept-Encoding", "gzip")
+      }
+  
+      // 配置cookie信息
+      val cookies = cookieJar.loadForRequest(userRequest.url)
+      if (cookies.isNotEmpty()) {
+        requestBuilder.header("Cookie", cookieHeader(cookies))
+      }
+  
+      if (userRequest.header("User-Agent") == null) {
+        requestBuilder.header("User-Agent", userAgent)
+      }
+  
+      val networkResponse = chain.proceed(requestBuilder.build())
+  
+      // 保存cookie信息
+      cookieJar.receiveHeaders(userRequest.url, networkResponse.headers)
+  
+      val responseBuilder = networkResponse.newBuilder()
+          .request(userRequest)
+  
+      // 解压处理
+      if (transparentGzip &&
+          "gzip".equals(networkResponse.header("Content-Encoding"), ignoreCase = true) &&
+          networkResponse.promisesBody()) {
+        val responseBody = networkResponse.body
+        if (responseBody != null) {
+          val gzipSource = GzipSource(responseBody.source())
+          val strippedHeaders = networkResponse.headers.newBuilder()
+              .removeAll("Content-Encoding")
+              .removeAll("Content-Length")
+              .build()
+          responseBuilder.headers(strippedHeaders)
+          val contentType = networkResponse.header("Content-Type")
+          responseBuilder.body(RealResponseBody(contentType, -1L, gzipSource.buffer()))
+        }
+      }
+  
+      return responseBuilder.build()
+    }
+  ```
+
+#### CacheInterceptor
+
+> 缓存拦截器
+
+- CacheInterceptor
+
+  ```java
+  @Override public Response intercept(Chain chain) throws IOException {
+    // 如果配置了缓存，则从缓存中取一次，不一定能取到
+      Response cacheCandidate = cache != null
+          ? cache.get(chain.request())
+          : null;
+  
+      long now = System.currentTimeMillis();
+  
+    // 工厂模式，返回缓存策略
+      CacheStrategy strategy = new CacheStrategy.Factory(now, chain.request(), cacheCandidate).get();
+      Request networkRequest = strategy.networkRequest;
+      Response cacheResponse = strategy.cacheResponse;
+  
+    // 缓存检测
+      if (cache != null) {
+        cache.trackResponse(strategy);
+      }
+  
+      if (cacheCandidate != null && cacheResponse == null) {
+        closeQuietly(cacheCandidate.body()); // The cache candidate wasn't applicable. Close it.
+      }
+  
+      // 禁止使用网络且缓存无效，直接返回，504:网关错误
+      if (networkRequest == null && cacheResponse == null) {
+        return new Response.Builder()
+            .request(chain.request())
+            .protocol(Protocol.HTTP_1_1)
+            .code(504)
+            .message("Unsatisfiable Request (only-if-cached)")
+            .body(Util.EMPTY_RESPONSE)
+            .sentRequestAtMillis(-1L)
+            .receivedResponseAtMillis(System.currentTimeMillis())
+            .build();
+      }
+  
+      // 缓存有效，不使用网络，返回缓存数据
+      if (networkRequest == null) {
+        return cacheResponse.newBuilder()
+            .cacheResponse(stripBody(cacheResponse))
+            .build();
+      }
+  
+    // 缓存无效，执行下一个拦截器
+      Response networkResponse = null;
+      try {
+        networkResponse = chain.proceed(networkRequest);
+      } finally {
+        // If we're crashing on I/O or otherwise, don't leak the cache body.
+        if (networkResponse == null && cacheCandidate != null) {
+          closeQuietly(cacheCandidate.body());
+        }
+      }
+  
+      // 本地有缓存，根据条件选择哪个响应
+      if (cacheResponse != null) {
+        if (networkResponse.code() == HTTP_NOT_MODIFIED) {
+          Response response = cacheResponse.newBuilder()
+              .headers(combine(cacheResponse.headers(), networkResponse.headers()))
+              .sentRequestAtMillis(networkResponse.sentRequestAtMillis())
+              .receivedResponseAtMillis(networkResponse.receivedResponseAtMillis())
+              .cacheResponse(stripBody(cacheResponse))
+              .networkResponse(stripBody(networkResponse))
+              .build();
+          networkResponse.body().close();
+  
+          // Update the cache after combining headers but before stripping the
+          // Content-Encoding header (as performed by initContentStream()).
+          cache.trackConditionalCacheHit();
+          cache.update(cacheResponse, response);
+          return response;
+        } else {
+          closeQuietly(cacheResponse.body());
+        }
+      }
+  
+    // 使用网络响应
+      Response response = networkResponse.newBuilder()
+          .cacheResponse(stripBody(cacheResponse))
+          .networkResponse(stripBody(networkResponse))
+          .build();
+  
+    // 缓存到本地
+      if (cache != null) {
+        if (HttpHeaders.hasBody(response) && CacheStrategy.isCacheable(response, networkRequest)) {
+          // Offer this request to the cache.
+          CacheRequest cacheRequest = cache.put(response);
+          return cacheWritingResponse(cacheRequest, response);
+        }
+  
+        if (HttpMethod.invalidatesCache(networkRequest.method())) {
+          try {
+            cache.remove(networkRequest);
+          } catch (IOException ignored) {
+            // The cache cannot be written.
+          }
+        }
+      }
+  
+      return response;
+    }
+  ```
+
 #### 自定义拦截器
 
 - 添加自定义拦截器
