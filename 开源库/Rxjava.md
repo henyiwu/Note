@@ -20,7 +20,7 @@ val observable = Observable.create(ObservableOnSubscribe<Int> {
     }
 
     override fun onNext(t: Int) {
-        Log.d(TAG, "接收到了事件")
+        Log.d(TAG, "接收到了事件 $t")
     }
 
     override fun onError(e: Throwable) {
@@ -43,7 +43,9 @@ D/MainActivity2: 对complete事件做出响应
 
 ### Just
 
-最多只能发送10个事件
+> 快捷创建事件队列
+>
+> 最多只能发送10个事件
 
 ```kotlin
 val observable = Observable.just(1,2,3,4)
@@ -146,7 +148,7 @@ observable.subscribe(object : Observer<Int> {
 
 运行结果：
 D/MainActivity2: 开始订阅事件
-D/MainActivity2: 收到事件 1
+D/MainActivity2: 收到事件 15
 D/MainActivity2: 流程结束
 ```
 
@@ -182,3 +184,40 @@ D/MainActivity2: 收到事件 0
 D/MainActivity2: 流程结束
 ```
 
+### map
+
+> map用于转换数据的类型，比如把string转为int
+
+```kotlin
+val observable = Observable.create(ObservableOnSubscribe<Int> {
+            it.onNext(1)
+            it.onNext(2)
+        }).map {
+            Log.d("rxjava", "map from int to string $it")
+            it.toString()
+        }
+        val observer = object : Observer<String> {
+            override fun onSubscribe(d: Disposable) {
+                Log.d("rxjava", "onSubscribe")
+            }
+
+            override fun onNext(t: String) {
+                Log.d("rxjava", "onNext $t")
+            }
+
+            override fun onError(e: Throwable) {
+                Log.d("west", "onError $e")
+            }
+
+            override fun onComplete() {
+                Log.d("west", "onComplete")
+            }
+        }
+        observable.subscribe(observer)
+
+D/rxjava: onSubscribe
+D/rxjava: map from int to string 1
+D/rxjava: onNext 1
+D/rxjava: map from int to string 2
+D/rxjava: onNext 2
+```
