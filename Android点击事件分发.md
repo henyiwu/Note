@@ -13,6 +13,7 @@
 > 1. ACTION_DOWN —— 手指刚接触屏幕
 > 2. ACTION_MOVE —— 手指在屏幕上移动
 > 3. ACTION_UP —— 手指从屏幕上松开的瞬间
+> 4. ACTION_CANCEL ——  被上层拦截时触发（手指点击了子View，但事件被父ViewGroup拦截）
 >
 > 正常情况下触摸事件有如下情况：
 >
@@ -277,7 +278,7 @@
               }
               //noinspection SimplifiableIfStatement
               ListenerInfo li = mListenerInfo;
-              // 判断有没有设置OnTouchListener
+              // 判断有没有设置OnTouchListener（li != null，设置了OnTouchListener或者OnClickListener就不会空）
               // 如果li.mOnTouchListener.onTouch(this, event)返回true，则result=true执行
               if (li != null && li.mOnTouchListener != null
                       && (mViewFlags & ENABLED_MASK) == ENABLED
@@ -394,6 +395,7 @@
           final ListenerInfo li = mListenerInfo;
           if (li != null && li.mOnClickListener != null) {
               playSoundEffect(SoundEffectConstants.CLICK);
+              // 点击事件回调
               li.mOnClickListener.onClick(this);
               result = true;
           } else {
