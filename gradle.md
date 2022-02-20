@@ -292,3 +292,251 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
   > 1024
   > height
   > 768
+
+#### 2.3 方法
+
+- 2.3.1 括号是可以省略的
+
+  ```groovy
+  task helloWorld {
+      method1(1,2)
+      method1 1,2
+  }
+  
+  def method1(int a, int b) {
+      println a+b
+  }
+  ```
+
+  wangzhiping@wangzhiping-PC:~/GradleProject$ gradle hW
+
+  > Configure project :
+  > 3
+  > 3
+
+- 2.3.2 return是可以不写的
+
+  ```groovy
+  task helloWorld {
+      println method1(1,2)
+  }
+  
+  static def method1(int a, int b) {
+      if (a > b) {
+          a
+      } else {
+          b
+      }
+  }
+  ```
+
+  wangzhiping@wangzhiping-PC:~/GradleProject$ gradle hW
+
+  > Configure project :
+  > 2
+
+  groovy取最后一行作为返回值，可以不写return
+
+- 代码块可以作为参数传递
+
+  类似于kotlin的闭包优化规则
+
+  ```groovy
+  task helloWorld {
+      def numList1 = [1,2,3,4,5]
+      numList1.each({println it})
+  
+      // 只有一个参数时，可以把闭包提出来
+      def numList2 = [1,2,3,4,5]
+      numList2.each(){println it}
+  
+      // 括号内没有参数时，可以把括号去掉
+      def numList3 = [1,2,3,4,5]
+      numList3.each{
+          println it
+      }
+  }
+  ```
+
+#### 2.4  javaBea
+
+- demo
+
+  ```groovy
+  task helloWorld {
+      Person p = new Person()
+  
+      println "名字是: ${p.name}"
+      p.name = "张三"
+      println "名字是: ${p.name}"
+  }
+  
+  class Person {
+      private String name
+  }
+
+​		wangzhiping@wangzhiping-PC:~/GradleProject$ gradle hW
+
+> Configure project :
+> 名字是: null
+> 名字是: 张三
+
+#### 2.5 闭包
+
+> 闭包是groovy一个非常重要的特性，可以说是dsl的基础。
+
+- 2.5.1 初识闭包
+
+  ```groovy
+  task helloWorld {
+      customEach {
+          println it
+      }
+  }
+  
+  // 参数名closure是自定义的，可以随便起
+  def customEach(closure) {
+      for (int i in 1..10) {
+          closure(i)
+      }
+  }
+  ```
+
+  wangzhiping@wangzhiping-PC:~/GradleProject$ gradle hW
+
+  > Configure project :
+  > 1
+  > 2
+  > 3
+  > 4
+  > 5
+  > 6
+  > 7
+  > 8
+  > 9
+  > 10
+
+- 2.5.2 向闭包传递参数
+
+  ```groovy
+  task helloWorld {
+      customEach { k,v ->
+          println "key:" + k + ",value:" + v
+      }
+  }
+  
+  def customEach(closure) {
+      def map = ["name":"张三", "age":18]
+      map.each {
+          closure(it.key, it.value)
+      }
+  }
+  ```
+
+  wangzhiping@wangzhiping-PC:~/GradleProject$ gradle hW
+
+  > Configure project :
+  > key:name,value:张三
+  > key:age,value:18
+
+- 2.5.3闭包委托
+
+  ```groovy
+  task helloWorld {
+      new Delegate().test {
+          println "thisObject: ${thisObject.getClass()}"
+          println "owner: ${owner.getClass()}"
+          println "delegate: ${delegate.getClass()}"
+          method1()
+          it.method1()
+      }
+  }
+  
+  def method1() {
+      println "context this : ${this.getClass()} in root"
+      println "method1 in root"
+  }
+  
+  class Delegate {
+      def method1() {
+          println "context this : ${this.getClass()} in delegate"
+          println "method1 in delegate"
+      }
+  
+      def test(Closure<Delegate> closure) {
+          closure(this)
+      }
+  }
+  ```
+
+  wangzhiping@wangzhiping-PC:~/GradleProject$ gradle -stacktrace  hW
+
+  > Configure project :
+  > thisObject: class build_atjutgku0sx4akor6tqhpkg7l
+  > owner: class build_atjutgku0sx4akor6tqhpkg7l$_run_closure1
+  > delegate: class build_atjutgku0sx4akor6tqhpkg7l$_run_closure1
+  > context this : class build_atjutgku0sx4akor6tqhpkg7l in root
+  > method1 in root
+  > context this : class Delegate in delegate
+  > method1 in delegate
+
+  thisObject的优先级最高，默认情况下使用thisObject来处理闭包中调用的方法，如果有则执行。thisObject其实就是这个构建脚本的上下文，它和脚本中的this对象是相等的。从例子中也证明了delegate和owner是相等的（owner: class build_atjutgku0sx4akor6tqhpkg7l$_run_closure1
+  delegate: class build_atjutgku0sx4akor6tqhpkg7l$_run_closure1）。它们两个的优先级是：owner > delegate高，所以闭包内的方法处理顺序是thisObject > owner > delegate
+
+- 在dsl中，我们一般指定delegate为当前的it，这样就可以在闭包内对该it进行配置，或者调用其方法：
+
+  ```groovy
+  task helloWorld {
+      person {
+          // 可以操作person对象属性，访问person对象的方法
+          personName = "张三"
+          personAge = 20
+          dumpPerson()
+      }
+  }
+  
+  class Person {
+      String personName
+      int personAge
+  
+      def dumpPerson() {
+          println "name is ${personName}, age is ${personAge}"
+      }
+  }
+  
+  def person(Closure<Person> closure) {
+      Person p = new Person()
+      closure.delegate = p
+      closure.setResolveStrategy(Closure.DELEGATE_FIRST)
+      closure(p)
+  }
+  ```
+
+  拿一段安卓项目的build.gradle文件对比
+
+- build.gradle
+
+  ```groovy
+  defaultConfig {
+      applicationId "com.example.myapplication"
+      minSdk 21
+      targetSdk 32
+      versionCode 1
+      versionName "1.0"
+  
+      testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+  }
+  
+  // demo
+  person {
+      personName = "张三"
+      personAge = 20
+      dumpPerson()
+  }
+  ```
+
+#### 2.6 dsl
+
+> dsl(Domain Specific Language)，专门关注某一领域的语言，对比java这种通用全面的语言。
+>
+> gradle就是一门dsl，它基于groovy，专门解决自动化构建的dsl。
