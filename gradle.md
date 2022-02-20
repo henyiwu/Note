@@ -540,3 +540,254 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 > dsl(Domain Specific Language)，专门关注某一领域的语言，对比java这种通用全面的语言。
 >
 > gradle就是一门dsl，它基于groovy，专门解决自动化构建的dsl。
+
+### 3. Gradle 构建脚本基础
+
+#### 3.1 Setting文件
+
+> 在Gradle中，定义了一个设置文件，用于初始化以及工程树的配置，设置文件的默认名字是setting.gradle，放在根目录工程下。
+>
+> 设置文件大多数的作用是为了配置子工程，在gradle中多工程是通过工程树表示的，相当于在android studio中看到的project和module一样，根工程相当于android studio中的project，一个根工程可以有很多子工程，也就是很多的module。
+>
+> 一个子工程只有在setting里设置了gradle才会去识别，才会在构建的时候被包含进去。
+
+- setting.gradle
+
+  ```groovy
+  rootProject.name = "My Application"
+  include ':app'
+  ```
+
+  对应于目录结构：
+
+  MyApplication/
+  ├── app
+
+#### 3.2 Build文件
+
+> 每个project都会有一个Build文件，该文件是该project构建的入口，可以在这里针对project进行配置，比如配置版本，需要哪些插件，依赖哪些库等。
+>
+> 既然每个project都会有一个build文件，那么root project也不例外。root project可以获得所有child project，所以可以在root project的build文件里对child project统一配置，比如应用的插件，依赖的maven中心库等。
+
+- build.gradle
+
+  ```groovy
+  subprojects {
+      repositories {
+          jcenter()
+      }
+  }
+  ```
+
+  对所有子project配置maven仓库，制定为jcenter
+
+#### 3.3 projects及tasks
+
+> 多个project组成整个gradle的构建，一个project又包含多个task，task是一个原子操作，比如打个jar包，复制一份文件，编译一次java代码。
+
+#### 3.4创建一个任务
+
+> task其实是Project对象的一个函数，原型为create(String name, Closure configureClosure)
+> 参数1：任务的名字，可以自定义
+> 参数2：一个闭包，也就是花括号内的代码块
+
+- 写法1
+
+  ```groovy
+  task helloWorld {
+      doFirst {
+          println 'customTask:doFirst'
+      }
+      doLast {
+          println 'customTask:doLast'
+      }
+  }
+  ```
+
+- 写法2
+
+  ```groovy
+  tasks.create("customTask") {
+      doFirst {
+          println 'customTask:doFirst'
+      }
+      doLast {
+          println 'customTask:doLast'
+      }
+  }
+  ```
+
+  wangzhiping@wangzhiping-PC:~/GradleProject$ gradle customTask
+
+  > Task :customTask
+  > customTask:doFirst
+  > customTask:doLast
+
+  两种写法的效果是一样的
+
+#### 3.5 任务依赖
+
+> 使用dependsOn:可以指定多个依赖任务作为参数，dependsOn是Task类的一个方法。
+>
+> task之间是有依赖关系的，这样我们就可以控制哪些任务优先于哪些任务执行。比如执行jar任务之前，compile任务一定要先执行过，android的install任务一定要依赖package任务打包生成apk。
+
+- ex35Hello
+
+  ```groovy
+  task ex35Hello {
+      println 'hello'
+  }
+  
+  task ex35Main(dependsOn: ex35Hello) {
+      doLast {
+          println 'Main'
+      }
+  }
+  ```
+
+  通过dependsOn:指定依赖的任务ex35Hello，运行结果：
+
+  wangzhiping@wangzhiping-PC:~/GradleProject$ gradle ex35Main
+
+  > Configure project :
+  > hello
+
+  > Task :ex35Main
+  > Main
+
+- 指定多个依赖task
+
+  ```groovy
+  task ex35Hello {
+      println "hello"
+  }
+  
+  task ex35World {
+      println "World"
+  }
+  
+  task ex35MultiTask {
+      dependsOn ex35Hello,ex35World
+      doLast {
+          println "multiTask"
+      }
+  }
+  ```
+
+  wangzhiping@wangzhiping-PC:~/GradleProject$ gradle ex35MultiTask
+
+  > Configure project :
+  > hello
+  > World
+
+  > Task :ex35MultiTask
+  > multiTask
+
+#### 3.6任务间通过API控制、交互
+
+> 创建一个任务和定义一个变量是一样的，变量名就是任务名，类型是Task，所以我们可以通过任务名，使用Task的API访问它的方法、属性或者重新配置等。
+
+- ex35Hello
+
+  ```groovy
+  task ex35Hello {
+      println "hello"
+  }
+  
+  ex35Hello.doFirst {
+      println "doFirst"
+  }
+  
+  ex35Hello.doLast {
+      println "doLast"
+  }
+  ```
+
+  wangzhiping@wangzhiping-PC:~/GradleProject$ gradle ex35Hello
+
+  > Configure project :
+  > hello
+
+  > Task :ex35Hello
+  > doFirst
+  > doLast
+
+- 判断是否有ex35Hello这个变量
+
+  ```groovy
+  task ex35Hello {
+      println "hello"
+  }
+  
+  ex35Hello.doFirst {
+      println "doFirst"
+  }
+  
+  ex35Hello.doLast {
+      println "has property ${project.hasProperty('ex35Hello')}"
+      println "doLast"
+  }
+  ```
+
+  wangzhiping@wangzhiping-PC:~/GradleProject$ gradle ex35Hello
+
+  > Configure project :
+  > hello
+
+  > Task :ex35Hello
+  > doFirst
+  > has property true
+  > doLast
+
+  project.hasProperty('ex35Hello')运行结果是true，说明每个task都是project的一个属性
+
+#### 3.7自定义属性
+
+> project和task都允许用户添加额外的自定义属性，要添加额外的属性，通过应用所属对应的ext属性即可实现。添加之后可以通过ext属性对自定义属性读取和设置，如果要同时添加多个自定义属性，可以通过ext代码块。
+>
+> ext一般用来自定义版本号名称，把版本号和版本名单独放在一个gradle文件中，便于管理。
+
+- ex37CustomProperty
+
+  ```groovy
+  ext.age = 18
+  
+  ext {
+      phone = 122222
+      address = "xxxddd"
+  }
+  
+  task ex37CustomProperty {
+      println "年龄是 ${age}"
+      println "电话是 ${phone}"
+      println "地址是 ${address}"
+  }
+  ```
+
+  wangzhiping@wangzhiping-PC:~/GradleProject$ gradle ex37CustomProperty
+
+  > Configure project :
+  > 年龄是 18
+  > 电话是 122222
+  > 地址是 xxxddd
+
+#### 3.8脚本即代码，代码也是脚本
+
+> 虽然我们在gradle文件中写脚本，但是我们写的都是代码，这一点要记住，这样才能时刻使用groovy，java以及gradle的任何语法和api帮你完成想做的事情。是脚本吗？是，但并不是简单的脚本，这脚本上可以定义class、内部类、导入包、定义方法等。
+
+- 给打包的apk定义生成的文件名
+
+  ```groovy
+  android {
+      android.applicationVariants.all { variant ->
+          variant.outputs.all {
+              outputFileName = "my_${buildTime()}.apk"
+          }
+      }
+  }
+  
+  def buildTime() {
+      def date = new Date()
+      def formattedDate = date.format('yyyyMMdd')
+      return formattedDate
+  }
