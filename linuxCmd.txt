@@ -1,1 +1,0 @@
-deepin打开当前目录:xdg-open .
