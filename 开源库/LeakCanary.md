@@ -120,7 +120,7 @@
 
   通过application注册每个activity生命周期回调，来监控每个activity的销毁，activity销毁时通过reachabilityWatcher将当前activity加入监控队列，进行具体分析
 
-### FragmentAndViewModelWatcher
+#### FragmentAndViewModelWatcher
 
 > 监控fragment和viewmodel对象销毁
 >
@@ -201,7 +201,7 @@
 
   使用反射是因为这两个watchers对象是另外的aar引入的，可实现解耦
 
-#### framework自带的fragment监控
+##### framework自带的fragment监控
 
 - AndroidOFragmentDestroyWatcher
 
@@ -245,7 +245,7 @@
 
   通过activity监控其中fragment的生命周期，在fragment销毁或者其view销毁时通过reachabilityWatcher加入监控队列，进行具体分析
 
-#### AndroidSupportFragmentDestroyWatcher 安卓support包下的fragment监控
+##### AndroidSupportFragmentDestroyWatcher 安卓support包下的fragment监控
 
 - AndroidSupportFragmentDestroyWatcher
 
@@ -288,7 +288,7 @@
   }
   ````
 
-#### AndroidXFragmentDestroyWatcher fragment和viewmodel监控
+##### AndroidXFragmentDestroyWatcher fragment和viewmodel监控
 
 - AndroidXFragmentDestroyWatcher
 

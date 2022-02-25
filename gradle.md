@@ -374,6 +374,7 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
   class Person {
       private String name
   }
+  ```
 
 ​		wangzhiping@wangzhiping-PC:~/GradleProject$ gradle hW
 
@@ -791,3 +792,188 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
       def formattedDate = date.format('yyyyMMdd')
       return formattedDate
   }
+  ```
+
+### Gradle任务
+
+#### 4.1Gradle多种方式创建任务
+
+1. 直接以任务名字创建
+
+   ```groovy
+   def Task helloWorld = task(helloWorld)
+   
+   helloWorld.doLast {
+       println "helloooo"
+   }
+   ```
+
+   该方法完整的定义是：Task task(String name) throws InvalidUserDataExceptions
+
+2. 任务+一个对该任务配置的map对象来创建
+
+   ```groovy
+   def Task helloWorld = task(helloWorld, group:BasePlugin.BUILD_GROUP)
+   
+   helloWorld.doLast {
+       println "helloooo"
+       println "任务分组${helloWorld.group}"
+   }
+   ```
+
+   该函数的原型是：Task task(Map<String, ?> args, String name) throws InvalidUserDataException
+
+   | 配置项      | 描述                                   | 默认值      |
+   | ----------- | -------------------------------------- | ----------- |
+   | type        | 基于一个存在的task来创建，和继承差不多 | DefaultTask |
+   | overwrite   | 是否替换存在的task，和type配合使用     | false       |
+   | dependsOn   | 用于配制任务的依赖                     | []          |
+   | action      | 添加到任务中的一个action或者一个闭包   | null        |
+   | description | 用于配制任务的描述                     | null        |
+   | group       | 用于配制任务的分组                     | null        |
+
+3. 任务名+闭包
+
+   ```groovy
+   task ex41CreateTask {
+       description '演示'
+       doLast {
+           println "创建方法的原型为 : Task task(String name, Closure configureClosure)"
+           println "任务描述, ${description}"
+       }
+   }
+   ```
+
+#### 4.2多种方式访问任务
+
+1. 首先，我们创建的任务都会作为项目的一个属性，属性名就是任务名，所以可以直接通过任务名访问和操纵该任务
+
+   ```groovy
+   task ex41CreateTask
+   
+   ex41CreateTask.doLast {
+       println "hello world"
+   }
+   ```
+
+2. 其次，任务都是通过taskContainer创建的，其实taskContainer就是我们创建任务的集合，在project中，可以通过tasks属性访问taskContainer，所以我们可以以访问集合的方式创建我们的任务
+
+   ```groovy
+   task ex41CreateTask
+   
+   tasks['ex41CreateTask'].doLast {
+       println "ex41CreateTask doLast"
+   }
+   ```
+
+   Task :app:ex41CreateTask
+   ex41CreateTask doLast
+
+   这里的[]指的不是map，而是a.getAt(b)，对应的例子tasks['ex41CreateTask']就是调用了tasks.getAt('ex41CreateTask')
+
+3. 通过路径访问
+
+   通过路径访问有两种方式
+
+   1. get路径访问
+
+      > get的时候如果找不到该任务，会抛出UnknownTaskException异常
+
+      ```groovy
+      task ex41CreateTask
+      
+      tasks['ex41CreateTask'].doLast {
+          println tasks.getByPath(':app:ex41CreateTask')
+      }
+      ```
+
+      > Task :app:ex41CreateTask
+      > task ':app:ex41CreateTask'
+
+   2. find路径访问
+
+      >find的时候如果找不到任务，返回null
+
+      ```groovy
+      task ex41CreateTask
+      
+      tasks['ex41CreateTask'].doLast {
+          println tasks.findByPath('ex41CreateTask')
+      }
+      ```
+
+      > Task :app:ex41CreateTask
+      > task ':app:ex41CreateTask'
+
+      通过路径访问时，参数值可以是任务路径也可以是任务的名字。
+
+      通过名字访问时，参数值只能是名字不能是路径。
+
+#### 4.3任务分组和描述
+
+> 任务的分组就是对任务的分类，便于我们对任务进行归类整理。
+>
+> 任务的描述就是说明这个任务的作用。
+
+- 添加分组和描述
+
+  ```groovy
+  def Task myTask = task ex43GroupTask
+  myTask.group = BasePlugin.BUILD_GROUP
+  myTask.description = '这是一个构建的引导任务'
+  
+  myTask.doLast {
+      println "group ${group}, descrption:${description}"
+  }
+  ```
+
+  ./gradlew tasks
+
+  Build tasks
+
+  assemble - Assemble main outputs for all the variants.
+  assembleAndroidTest - Assembles all the Test applications.
+  build - Assembles and tests this project.
+  buildDependents - Assembles and tests this project and all projects that depend on it.
+  buildNeeded - Assembles and tests this project and all projects it depends on.
+  bundle - Assemble bundles for all the variants.
+  clean - Deletes the build directory.
+  cleanBuildCache - Deletes the build cache directory.
+  compileDebugAndroidTestSources
+  compileDebugSources
+  compileDebugUnitTestSources
+  compileReleaseSources
+  compileReleaseUnitTestSources
+  ex43GroupTask - 这是一个构建的引导任务
+
+#### 4.5任务的执行分析
+
+> 当我们执行tasks的时候，其实就是执行其拥有的actions列表，这个列表保存在task对象实例中actions成员变量中，其类型是一个list
+>
+> private List<ContextAwareTaskAction> actions = new ArrayList<ContextAwareTaskAction>();
+
+- 现在我们把task之前执行、task本身执行以及task之后执行分别称为doFirst、doSelf以及doLast，举个例子
+
+  ```groovy
+  def Task myTask = task ex45CustomTask(type : CustomTask)
+  
+  myTask.doFirst {
+      println "task执行之前执行do first"
+  }
+  
+  myTask.doLast {
+      println "task执行之后执行do last"
+  }
+  
+  class CustomTask extends DefaultTask {
+      @TaskAction
+      def doSelf() {
+          println "task 自己本身在执行in doSelf"
+      }
+  }
+  ```
+
+  > Task :app:ex45CustomTask
+  > task执行之前执行do first
+  > task 自己本身在执行in doSelf
+  > task执行之后执行do last
