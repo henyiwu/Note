@@ -955,12 +955,15 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 - 现在我们把task之前执行、task本身执行以及task之后执行分别称为doFirst、doSelf以及doLast，举个例子
 
   ```groovy
+  // 创建了task，所以task里的actions有了元素
   def Task myTask = task ex45CustomTask(type : CustomTask)
   
+  // 把doFirst这个action放在actions开头
   myTask.doFirst {
       println "task执行之前执行do first"
   }
   
+  // 把doLast这个action放在actions末尾
   myTask.doLast {
       println "task执行之后执行do last"
   }
@@ -977,3 +980,40 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
   > task执行之前执行do first
   > task 自己本身在执行in doSelf
   > task执行之后执行do last
+
+- AbstractTask
+
+  ````java
+  public abstract class AbstractTask implements TaskInternal, DynamicObjectAware {
+    // 执行task时，就是执行task中该actions集合
+    private List<InputChangesAwareTaskAction> actions;	 
+    
+    public Task doFirst(final String actionName, final Action<? super Task> action) {
+          this.hasCustomActions = true;
+          if (action == null) {
+              throw new InvalidUserDataException("Action must not be null!");
+          } else {
+              this.taskMutator.mutate("Task.doFirst(Action)", new Runnable() {
+                  public void run() {
+                      AbstractTask.this.getTaskActions().add(0, AbstractTask.this.wrap(action, actionName));
+                  }
+              });
+              return this;
+          }
+      }
+    
+        public Task doLast(final String actionName, final Action<? super Task> action) {
+          this.hasCustomActions = true;
+          if (action == null) {
+              throw new InvalidUserDataException("Action must not be null!");
+          } else {
+              this.taskMutator.mutate("Task.doLast(Action)", new Runnable() {
+                  public void run() {
+                      AbstractTask.this.getTaskActions().add(AbstractTask.this.wrap(action, actionName));
+                  }
+              });
+              return this;
+          }
+      }
+  }
+  ````
