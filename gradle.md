@@ -823,6 +823,8 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 
    该函数的原型是：Task task(Map<String, ?> args, String name) throws InvalidUserDataException
 
+   map可配置的参数如下：
+
    | 配置项      | 描述                                   | 默认值      |
    | ----------- | -------------------------------------- | ----------- |
    | type        | 基于一个存在的task来创建，和继承差不多 | DefaultTask |
@@ -843,6 +845,23 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
        }
    }
    ```
+
+- task原型
+
+  ```java
+   public interface Project extends Comparable<Project>, ExtensionAware, PluginAware {
+   
+  	Task task(String var1) throws InvalidUserDataException;
+  
+      Task task(Map<String, ?> var1, String var2) throws InvalidUserDataException;
+  
+      Task task(Map<String, ?> var1, String var2, Closure var3);
+  
+      Task task(String var1, Closure var2);
+  
+      Task task(String var1, Action<? super Task> var2);
+  	...    
+  }
 
 #### 4.2多种方式访问任务
 
@@ -995,6 +1014,7 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
           } else {
               this.taskMutator.mutate("Task.doFirst(Action)", new Runnable() {
                   public void run() {
+                      // 在list最前面添加
                       AbstractTask.this.getTaskActions().add(0, AbstractTask.this.wrap(action, actionName));
                   }
               });
@@ -1009,6 +1029,7 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
           } else {
               this.taskMutator.mutate("Task.doLast(Action)", new Runnable() {
                   public void run() {
+                      // 在list最后面添加
                       AbstractTask.this.getTaskActions().add(AbstractTask.this.wrap(action, actionName));
                   }
               });
@@ -1017,3 +1038,423 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
       }
   }
   ````
+  
+  当我们使用Task方法创建ex45CustomTask这个任务时，Gradle会解析所有其带有TaskAction标注的方法作为其Task执行的Action，然后通过Task的prependParallelSafeAction方法把该Action添加到actions List里。
+  
+  ```groovy
+      public void prependParallelSafeAction(Action<? super Task> action) {
+          if (action == null) {
+              throw new InvalidUserDataException("Action must not be null!");
+          } else {
+              this.getTaskActions().add(0, this.wrap(action));
+          }
+      }
+
+#### 4.6任务排序
+
+- mustRunAfter
+
+  ```groovy
+  task order1 {
+      println "order1"
+  
+      doFirst {
+          println "order1 doFirst"
+      }
+  }
+  
+  task order2 {
+      println "order2"
+  
+      doFirst {
+          println "order2 doFirst"
+      }
+  }
+  
+  order1.mustRunAfter order2
+  ```
+
+  > > Configure project :
+  > > order1
+  > > order2
+  >
+  > > Task :order2  // order2先执行
+  > > order2 doFirst
+  >
+  > > Task :order1
+  > > order1 doFirst // order1后执行
+  >
+  > BUILD SUCCESSFUL in 393ms
+  > 2 actionable tasks: 2 executed
+
+- 去掉order1.mustRunAfter order2
+
+  ```groovy
+  task order1 {
+      println "order1"
+  
+      doFirst {
+          println "order1 doFirst"
+      }
+  }
+  
+  task order2 {
+      println "order2"
+  
+      doFirst {
+          println "order2 doFirst"
+      }
+  }
+  ```
+
+  > Configure project :
+  > order1
+  > order2
+
+  > Task :order1
+  > order1 doFirst
+
+  > Task :order2
+  > order2 doFirst
+
+  order1比order2先执行
+
+  或者使用shouldRunAfter，但有可能还是按原顺序执行
+
+- shouldRunAfter
+
+  ```groovy
+  task order1 {
+      println "order1"
+  
+      doFirst {
+          println "order1 doFirst"
+      }
+  }
+  
+  task order2 {
+      println "order2"
+  
+      doFirst {
+          println "order2 doFirst"
+      }
+  }
+  
+  order1.shouldRunAfter order2
+  ```
+
+  > Configure project :
+  > order1
+  > order2
+
+  > Task :order2
+  > order2 doFirst
+
+  > Task :order1
+  > order1 doFirst
+
+#### 4.7任务的启用和禁用
+
+- task.enabled
+
+  ```groovy
+  order1.enabled = false
+  ```
+
+  开启enabled = false，没有执行task1
+
+  wangzhiping@wangzhiping-PC:~/GradleProject$ gradle order1
+
+  > Configure project :
+  > order1
+  > order2
+
+  关闭enabled，成功执行了task1
+
+  BUILD SUCCESSFUL in 394ms
+  wangzhiping@wangzhiping-PC:~/GradleProject$ gradle order1
+
+  > Configure project :
+  > order1
+  > order2
+
+  > Task :order1
+  > order1 doFirst
+
+#### 4.8任务的OnlyIf断言
+
+> 断言就是一个条件表达式，Task有一个oflyIf方法，它接受一个闭包作为参数，如果该闭包返回true则该任务执行，否则跳过。
+
+- 渠道打包举例
+
+  ```groovy
+  final String BUILD_APPS_ALL = "all"
+  final String BUILD_APPS_SHOUFA = "shoufa"
+  final String BUILD_APPS_EXCLUDE_SHOUFA = "exclude_shoufa"
+  
+  task ex48QQRelease {
+      println "打应用宝的包"
+      doFirst {
+          println "打应用宝的包 doFirst"
+      }
+  }
+  
+  task ex48BaiduRelease {
+      println "打百度的包"
+      doFirst {
+          println "打百度的包 doFirst"
+      }
+  }
+  
+  task ex48HuaweiRelease {
+      println "打华为的包"
+      doFirst {
+          println "打华为的包 doFirst"
+      }
+  }
+  
+  task ex48MiuiRelease {
+      println "打小米的包"
+      doFirst {
+          println "打小米的包 doFirst"
+      }
+  }
+  
+  task build {
+      group BasePlugin.BUILD_GROUP
+      description "打渠道包"
+      doFirst {
+          println "打渠道包 doFirst"
+      }
+  }
+  
+  build.dependsOn ex48BaiduRelease,ex48HuaweiRelease,ex48MiuiRelease,ex48QQRelease
+  
+  ex48BaiduRelease.onlyIf {
+      def execute = false
+      if (project.hasProperty("build_apps")) {
+          Object buildApps = project.property("build_apps")
+          if (BUILD_APPS_SHOUFA == buildApps || BUILD_APPS_ALL == buildApps) {
+              execute = true
+          } else {
+              execute = false
+          }
+      } else {
+          execute = true
+      }
+      execute
+  }
+  
+  ex48QQRelease.onlyIf {
+      def execute = false
+      if (project.hasProperty("build_apps")) {
+          Object buildApps = project.property("build_apps")
+          if (BUILD_APPS_SHOUFA == buildApps || BUILD_APPS_ALL == buildApps) {
+              execute = true
+          } else {
+              execute = false
+          }
+      } else {
+          execute = true
+      }
+      execute
+  }
+  
+  ex48HuaweiRelease.onlyIf {
+      def execute = false
+      if (project.hasProperty("build_apps")) {
+          Object buildApps = project.property("build_apps")
+          if (BUILD_APPS_EXCLUDE_SHOUFA == buildApps || BUILD_APPS_ALL == buildApps) {
+              execute = true
+          } else {
+              execute = false
+          }
+      } else {
+          execute = true
+      }
+      execute
+  }
+  
+  ex48MiuiRelease.onlyIf {
+      def execute = false
+      if (project.hasProperty("build_apps")) {
+          Object buildApps = project.property("build_apps")
+          if (BUILD_APPS_EXCLUDE_SHOUFA == buildApps || BUILD_APPS_ALL == buildApps) {
+              execute = true
+          } else {
+              execute = false
+          }
+      } else {
+          execute = true
+      }
+      execute
+  }
+  ```
+
+  wangzhiping@wangzhiping-PC:~/GradleProject$ gradle -Pbuild_apps=all build
+
+  > Configure project :
+  > 打应用宝的包
+  > 打百度的包
+  > 打华为的包
+  > 打小米的包
+
+  > Task :ex48BaiduRelease
+  > 打百度的包 doFirst
+
+  > Task :ex48HuaweiRelease
+  > 打华为的包 doFirst
+
+  > Task :ex48MiuiRelease
+  > 打小米的包 doFirst
+
+  > Task :ex48QQRelease
+  > 打应用宝的包 doFirst
+
+  > Task :build
+  > 打渠道包 doFirst
+
+  wangzhiping@wangzhiping-PC:~/GradleProject$ gradle -Pbuild_apps=shoufa build
+
+  > Configure project :
+  > 打应用宝的包
+  > 打百度的包
+  > 打华为的包
+  > 打小米的包
+
+  > Task :ex48BaiduRelease
+  > 打百度的包 doFirst
+
+  > Task :ex48QQRelease
+  > 打应用宝的包 doFirst
+
+  > Task :build
+  > 打渠道包 doFirst
+
+  打包命令为gradle -Pbuild_apps=shoufa build时，比gradle -Pbuild_apps=all build，少执行了小米和华为两个打包任务，应为它们的onlyIf表达式返回false
+
+#### 4.9任务规则
+
+> 我们创建的任务都在TaskContainer里，由其进行管理。所以当我们访问任务的时候都是通过TaskContainer进行访问，二TaskContainer又是一个NamedDomainObjectCollection，所以说我们的任务规则是NamedDomainObjectCollection的规则。
+>
+> NamedDomainObjectCollection是一个具有唯一名字的域对象的集合，它里面所有的元素都有一个唯一不变的名字，该名字是String类型，所以我们可以通过名字获取该元素，比如我们通过任务名获取该任务
+>
+> 我们提供的任务名在NamedDomainObjectCollection中可能并不存在，这时候就会调用我们添加的规则来处理这种异常情况。如理：	
+
+- addRule
+
+  ```groovy
+  tasks.addRule("对该规则的一个描述,便于调试") { String taskName ->
+      println "addRule 开始执行"
+      task(taskName) {
+          println "该${taskName}不存在，请查证后再执行"
+      }
+  }
+  
+  task ex49RuleTask {
+      println "ex49RuleTask 开始执行"
+      dependsOn missTask
+  }
+  ```
+
+  wangzhiping@wangzhiping-PC:~/GradleProject$ gradle ex49RuleTask
+
+  > Configure project :
+  > ex49RuleTask 开始执行
+  > addRule 开始执行
+  > 该missTask不存在，请查证后再执行
+
+- 如果不在addRule中创建task，则程序崩溃
+
+  ```groovy
+  tasks.addRule("对该规则的一个描述,便于调试") { String taskName ->
+      println "addRule 开始执行"
+  }
+  
+  task ex49RuleTask {
+      println "ex49RuleTask 开始执行"
+      dependsOn missTask
+  }
+  ```
+
+  wangzhiping@wangzhiping-PC:~/GradleProject$ gradle ex49RuleTask
+
+  > Configure project :
+  > ex49RuleTask 开始执行
+  > addRule 开始执行
+
+  FAILURE: Build failed with an exception.
+
+  * Where:
+  Build file '/home/wangzhiping/GradleProject/build.gradle' line: 7
+
+  * What went wrong:
+  A problem occurred evaluating root project 'GradleProject'.
+  > Could not get unknown property 'missTask' for task ':ex49RuleTask' of type org.gradle.api.DefaultTask.
+
+  * Try:
+  > Run with --stacktrace option to get the stack trace.
+  > Run with --info or --debug option to get more log output.
+  > Run with --scan to get full insights.
+
+  * Get more help at https://help.gradle.org
+
+  BUILD FAILED in 401ms
+
+- 如果依赖的task存在，addRule回调不会执行
+
+  ```groovy
+  tasks.addRule("对该规则的一个描述,便于调试") { String taskName ->
+      println "addRule 开始执行"
+  }
+  
+  task missTask {
+      println "missTask 开始执行"
+  }
+  
+  task ex49RuleTask {
+      println "ex49RuleTask 开始执行"
+      dependsOn missTask
+  }
+  ```
+
+  wangzhiping@wangzhiping-PC:~/GradleProject$ gradle ex49RuleTask
+
+  > Configure project :
+  > missTask 开始执行
+  > ex49RuleTask 开始执行
+
+- 函数原型
+
+  ````java
+  public class DefaultNamedDomainObjectCollection<T> extends DefaultDomainObjectCollection<T> implements NamedDomainObjectCollection<T>, MethodMixIn, PropertyMixIn {
+  
+      public Rule addRule(Rule rule) {
+          this.rules.add(rule);
+          return rule;
+      }
+      ...
+  }
+  ````
+
+- findByName
+
+  ```java
+  public T findByName(String name) {
+      T value = this.findByNameWithoutRules(name);
+      if (value != null) {
+          return value;
+      } else {
+          ProviderInternal<? extends T> provider = this.index.getPending(name);
+          if (provider != null) {
+              provider.getOrNull();
+              return this.index.get(name);
+          } else {
+              // 要执行的task不存在时，执行applyRules()
+              return !this.applyRules(name) ? null : this.findByNameWithoutRules(name);
+          }
+      }
+  }
+  ```
+
+  从findByName中可以看出，如果依赖的任务存在，findByName会直接返回，不存在会执行rules
