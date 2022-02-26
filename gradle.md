@@ -794,7 +794,7 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
   }
   ```
 
-### Gradle任务
+### 4. Gradle任务
 
 #### 4.1Gradle多种方式创建任务
 
@@ -1458,3 +1458,124 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
   ```
 
   从findByName中可以看出，如果依赖的任务存在，findByName会直接返回，不存在会执行rules
+
+### 5. Gradle插件
+
+> Gradle本身提供一些基本的概念和整体核心框架，其他用于描述真实使用场景逻辑的都以插件扩展，这样的设计可以抽象的方式提供一个核心框架，其他具体的功能和业务都通过插件的扩展的方式来实现，比如构建java应用，就是通过java插件来实现的。
+
+#### 5.1 插件的作用
+
+> 1. 添加任务到项目中，帮助完成一些事情，比如测试、编译、打包。
+> 2. 可以添加依赖配置到项目中，我们可以通过它们配置我们项目在构建构成中需要的依赖，比如我们去编译的时候依赖的第三方库等。
+> 3. 可以向项目中现有的对象类型添加新的扩展属性、方法等，让你可以使用它们帮助我们配置、优化构建，比如android{}这个配置块就是Android Gradle插件为Project对象添加的一个扩展。
+> 4. 可以对项目进行一些约定，比如应用java插件之后，约定src/main/java目录下是我们源代码存放的位置，在编译的时候也是编译这个目录下的java文件。
+
+#### 5.2 如何引用一个插件
+
+- 应用二进制插件
+
+  > 什么是二进制插件？二进制插件就是实现了org.gradle.api.Plugin接口的插件，它们可以有plugin id。
+  >
+  > ```groovy
+  > apply plugin:'java'
+  > ```
+  >
+  > 这句代码就把java插件应用到我们项目中了，其中'java'是Java插件的plugin id，它是唯一的。对于Gradle自带的核心插件都有一个容易记的短名，称其为plugin id，比如这里的java，其实它对应的类型是org.gradle.api.plugins.JavaPlugin，所以通过该类型我们也可以应用这个插件：
+  >
+  > ```groovy
+  > apply plugin:org.gradle.api.plugins.JavaPlugin
+  > ```
+  >
+  > 又因为包org.gradle.api.plugins是默认导入的，所以我们可以去掉包名直接改为
+  >
+  > ```groovy
+  > apply plugin:JavaPlugin
+  > ```
+  >
+  > 以上三种写法是等价的，不过第一种用的最多，因为它容易记住，第二种写法一般适用于我们在build文件中自定义的插件，也就是脚本插件。
+  >
+  > 二进制插件一般被打包在一个jar里面独立发布，比如我们自定义的插件，在发布的时候我们也可以指定其plugin id，这个plugin id最好是一个全限定名称，就像包名一样，这样发布的插件plugin id就不会重复，比如org.flysnow.tools.plugin.xxx
+
+- 应用脚本插件
+
+  >version.gradle
+  >
+  >```groovy
+  >ext {
+  >    versionName = '1.0.0'
+  >    versionCode = 1
+  >}
+  >```
+  >
+  >build.gradle
+  >
+  >```groovy
+  >apply from : 'version.gradle'
+  >
+  >task ex52PrintTask {
+  >    println "app version is ${versionName}"
+  >    println "app version code is ${versionCode}"
+  >}
+  >```
+  >
+  >其实这不能算是一个插件，只能算是一个脚本。应用脚本插件，其实就是把这个脚本加载进来，和二进制插件不同的是它用的是from关键字，后面紧跟着一个脚本文件，可以是本地的，也可以是网络存在的，如果是网络上的话要使用html url。
+  >
+  >虽然它不是一个正真的插件，但是不能忽视它的作用，它是脚本文件模块化的基础，我们可以把庞大的脚本文件，进行分块，分段整理，拆分成一个个公用、职责分明的文件，然后使用apply from来引用它们，比如我们可以把常用的函数放在一个个utils.gradle文件里，供其他脚本文件引用。示例中我们把app各个版本名称和版本号单独放在一个脚本文件里，清晰、简单。我们也可以使用自动化对该文件自动处理，生成版本。
+
+- apply方法的其他用法
+
+  > Project.apply()方法有3种方式，它们是以接受参数的不同区分的。我们上面用的是接受一个Map类型参数的方式。此外还有两种。
+  >
+  > ```kotlin
+  > public abstract class ProjectDelegate public constructor() : org.gradle.api.Project {
+  > 
+  > 	public open fun apply(closure: groovy.lang.Closure<*>): kotlin.Unit { /* compiled code */ }
+  > 
+  > 	public open fun apply(options: kotlin.collections.Map<kotlin.String, *>): kotlin.Unit { /* 		compiled code */ }
+  > 
+  > 	public open fun apply(action: org.gradle.api.Action<in 				org.gradle.api.plugins.ObjectConfigurationAction>): kotlin.Unit { /* compiled code */ }
+  > }
+  > ```
+  >
+  > 闭包的方式如下：
+  >
+  > ```groovy
+  > apply {
+  > 	plugin 'java'
+  > }
+  > ```
+  >
+  > 该闭包被用来配置一个ObjectConfigurationAction对象，所以可以在闭包里使用ObjectConfigurationAction对象的方法、属性等进行配置。
+  >
+  > - ObjectConfigurationAction
+  >
+  > ```java
+  > public interface ObjectConfigurationAction {
+  >     ObjectConfigurationAction to(Object... var1);
+  > 
+  >     ObjectConfigurationAction from(Object var1);
+  > 
+  >     ObjectConfigurationAction plugin(Class<? extends Plugin> var1);
+  > 
+  >     ObjectConfigurationAction type(Class<?> var1);
+  > 
+  >     ObjectConfigurationAction plugin(String var1);
+  > }
+  > ```
+  >
+  > plugin 'java'对应ObjectConfigurationAction plugin(Class<? extends Plugin> var1);
+  >
+  > Action的方式：
+  >
+  > ```groovy
+  > apply(new Action<ObjectConfigurationAction>() {
+  >     @Override
+  >     void execute(ObjectConfigurationAction objectConfigurationAction) {
+  >         objectConfigurationAction.plugin('java')
+  >     }
+  > })
+  > ```
+  >
+  > 对应public open fun apply(action: org.gradle.api.Action<in 				org.gradle.api.plugins.ObjectConfigurationAction>): kotlin.Unit { /* compiled code */ }
+
+- 应用第三方发布的插件
