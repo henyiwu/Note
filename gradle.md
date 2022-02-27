@@ -1579,3 +1579,203 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
   > 对应public open fun apply(action: org.gradle.api.Action<in 				org.gradle.api.plugins.ObjectConfigurationAction>): kotlin.Unit { /* compiled code */ }
 
 - 应用第三方发布的插件
+
+  > 第三方发布的作为jar的二进制插件，引用时候需要在buildscript{}里配置其classpath才能使用，这个不像Gradle为我们提供的内置插件。比如我们在Android Gradle插件，就属于Android发布的第三方插件，如果要使用它们我们要先进行配置。
+  >
+  > - 根目录build.gradle
+  >
+  >   ```groovy
+  >   // Top-level build file where you can add configuration options common to all sub-projects/modules.
+  >   
+  >   buildscript {
+  >       ext.kotlin_version = '1.3.72'
+  >       ext.gradle_version = '4.0.0'
+  >       repositories {
+  >           google()
+  >           jcenter()
+  >       }
+  >       dependencies {
+  >           classpath "com.android.tools.build:gradle:$gradle_version"
+  >           classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+  >   
+  >           // NOTE: Do not place your application dependencies here; they belong
+  >           // in the individual module build.gradle files
+  >       }
+  >   }
+  >   
+  >   allprojects {
+  >       repositories {
+  >           google()
+  >           jcenter()
+  >       }
+  >   }
+  >   
+  >   task clean(type: Delete) {
+  >       delete rootProject.buildDir
+  >   }
+  >   ```
+  >
+  >   buildscript{}块是一个在构建项目之前，为项目进行前期准备和初始化相关配置依赖的地方，配置好所需的依赖，就可以应用插件了：
+  >
+  > - app/build.gradle
+  >
+  >   ```groovy
+  >   apply plugin: 'com.android.application'
+  >   ```
+  >
+  >   如果没有提前在buildscript里配置依赖的classpath，会提示找不到这个插件。
+
+- 使用plugin DSL应用插件
+
+  >plugins DSL是一种新的插件应用方式，gradle2.1以上版本才能使用。
+  >
+  >```groovy
+  >plugins {
+  >    id 'com.android.application'
+  >    id 'com.android.library'
+  >    id 'org.jetbrains.kotlin.android'
+  >}
+  >```
+  >
+  >使用plugins应用第三方插件时，如果该插件已经被托管在https://plugins.gradle.org/上，我们就可以不用在buildscript里配置classpath依赖了，直接使用plugins就可以应用插件。
+  >
+  >```groovy
+  >plugins {
+  >    id 'com.android.application' version '7.1.0'
+  >    id 'com.android.library' version '7.1.0'
+  >    id 'org.jetbrains.kotlin.android' version '1.5.30'
+  >}
+  >```
+
+#### 5.3 自定义插件
+
+> ```groovy
+> apply plugin : ExCustomPlugin
+> 
+> class ExCustomPlugin implements Plugin<Project> {
+> 
+>     @Override
+>     void apply(Project project) {
+>         project.task('ex53CustomTask') {
+>             println "这是一个通过自定义插件创建的task"
+>         }
+>     }
+> }
+> ```
+>
+> wangzhiping@wangzhiping-PC:~/GradleProject$ gradle ex53CustomTask
+> Starting a Gradle Daemon (subsequent builds will be faster)
+>
+> Configure project :	
+> 这是一个通过自定义插件创建的task
+>
+> 自定义插件必须要实现Plugin接口，这个接口只有一个apply方法，该方法在插件被应用时调用，所以我们可以实现这个方法，做我们想做的事情，比如这里创建一个名称为ex53CustomTask的任务。	
+>
+> 这个插件定义在build脚本里，只能是自己的项目用，如果我们想开发一个独立的插件给所有人使用，应该怎么做呢？这就需要单独创建一个Groovy工程作为开发自定义插件的工程了。
+>
+> - groovy模块目录层级
+>
+>   ```
+>   ── buildSrc
+>   │   ├── build
+>   │   │   ├── classes
+>   │   │   │   └── groovy
+>   │   │   │       └── main
+>   │   │   │           └── com
+>   │   │   │               └── henyiwu
+>   │   │   │                   └── gradle
+>   │   │   │                       ├── Ex53CustomPlugin$_apply_closure1$_closure2.class
+>   │   │   │                       ├── Ex53CustomPlugin$_apply_closure1.class
+>   │   │   │                       └── Ex53CustomPlugin.class
+>   │   │   ├── generated
+>   │   │   │   └── sources
+>   │   │   │       └── annotationProcessor
+>   │   │   │           └── groovy
+>   │   │   │               └── main
+>   │   │   ├── libs
+>   │   │   │   └── buildSrc.jar
+>   │   │   ├── resources
+>   │   │   │   └── main
+>   │   │   │       └── META-INF
+>   │   │   │           └── gradle-plugins
+>   │   │   │               └── com.henyiwu.gradle.Ex53CustomPlugin.properties
+>   │   │   ├── source-roots
+>   │   │   │   └── buildSrc
+>   │   │   │       └── source-roots.txt
+>   │   │   └── tmp
+>   │   │       ├── compileGroovy
+>   │   │       │   └── groovy-java-stubs
+>   │   │       └── jar
+>   │   │           └── MANIFEST.MF
+>   │   ├── build.gradle
+>   │   └── src
+>   │       └── main
+>   │           ├── groovy
+>   │           │   └── com
+>   │           │       └── henyiwu
+>   │           │           └── gradle
+>   │           │               └── Ex53CustomPlugin.groovy
+>   │           └── resources
+>   │               └── META-INF
+>   │                   └── gradle-plugins
+>   │                       └── com.henyiwu.gradle.Ex53CustomPlugin.properties
+>   ├── gradle
+>   │   └── wrapper
+>   │       ├── gradle-wrapper.jar
+>   │       └── gradle-wrapper.properties
+>   ├── gradle.properties
+>   ├── gradlew
+>   ├── gradlew.bat
+>   ├── local.properties
+>   └── settings.gradle
+>   ```
+>
+> - Ex53CustomPlugin.groovy
+>
+>   ```groovy
+>   class Ex53CustomPlugin implements Plugin<Project>{
+>   
+>       @Override
+>       void apply(Project project) {
+>           project.task('ex53CustomTask') {
+>               println "这是一个通过自定义插件创建的task"
+>               doLast {
+>                   println "ex53CustomTask do Last"
+>               }
+>           }
+>       }
+>   }
+>   ```
+>
+> - resources/META-INF/gradle-plugins/{pluginId}.properties
+>
+>   这里文件名对应com.henyiwu.gradle.Ex53CustomPlugin.properties
+>
+>   ```properties
+>   implementation-class=com.henyiwu.gradle.Ex53CustomPlugin
+>   ```
+>
+> - buildSrc/build.gradle
+>
+>   ```groovy
+>   apply plugin: 'groovy'
+>   
+>   dependencies {
+>       implementation gradleApi()
+>       implementation localGroovy()
+>   }
+>   ```
+>
+> - 运行结果
+>
+>   ```
+>   wangzhiping@wangzhiping-PC:~/AndroidStudioProjects/GradleTEst$ gradle ex53CustomTask
+>   
+>   > Configure project :app
+>   这是一个通过自定义插件创建的task
+>   
+>   > Task :app:ex53CustomTask
+>   ex53CustomTask do Last
+>   
+>   BUILD SUCCESSFUL in 984ms
+
