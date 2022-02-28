@@ -862,6 +862,7 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
       Task task(String var1, Action<? super Task> var2);
   	...    
   }
+  ```
 
 #### 4.2 多种方式访问任务
 
@@ -1049,6 +1050,7 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
               this.getTaskActions().add(0, this.wrap(action));
           }
       }
+  ```
 
 #### 4.6 任务排序
 
@@ -1827,7 +1829,7 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >         vip {
 > 
 >         }
->     }
+>     	}
 > }
 > ```
 >
@@ -1880,6 +1882,7 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >   api：
 >   Gradle 会将依赖项添加到编译类路径和构建输出。当一个模块包含 api 依赖项时，会让 Gradle 了解该模块要以传递方式将该依赖项导出到其他模块，以便这些模块在运行时和编译时都可以使用该依赖项。
 >   此配置的行为类似于 compile（现已弃用），但使用它时应格外小心，只能对您需要以传递方式导出到其他上游消费者的依赖项使用它。 这是因为，如果 api 依赖项更改了其外部 API，Gradle 会在编译时重新编译所有有权访问该依赖项的模块。 因此，拥有大量的 api 依赖项会显著增加构建时间。除非要将依赖项的 API 公开给单独的模块，否则库模块应改用 implementation 依赖项。
+>   ```
 >
 > - 引用一个本地module，例如我们新建一个mylibrary
 >
@@ -1909,3 +1912,118 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >   ```
 >
 >   这样配置后，libs文件下的扩展名为jar的都会被依赖，这里用到的是Project的fileTree()方法
+
+#### 6.4 如何构建一个java项目
+
+> 在gradle中，执行任何操作都是任务驱动的，构建java项目也不例外。java插件为我们提供了很多任务，通过运行它们来达到我们构建java项目的目的。最常用的是build任务，运行它会构建你的整个项目，我们可以通过gradle build来运行，然后gradle就会开始编译源码文件，处理资源文件，打成jar包，然后编译测试用例代码，处理测试资源，最后运行单元测试。
+>
+> 运行build后大致的task执行流程
+> compileJava -> processResource -> classes -> jar -> assemble -> compileTestJava -> processTestResource -> testClasses 
+> -> test -> check -> build
+>
+> 最后在build/libs生成jar包
+>
+> - clean
+>
+>   这个是删除build目录以及其他构建生成的文件。如果编译中有问题，可以先clean再重新编译。
+>
+> - Assemble
+>
+>   该任务不会执行单元测试，只会编译和打包。这个任务在android里也有，执行它可以打apk包，所以它不止会打jar包，其实它也算是一个引导类任务，根据不同的项目打不同的包。
+>
+> - check
+>
+>   只会执行单元测试，有时候还会做一些质量检查，不会打jar包。
+
+#### 6.5 源码集合SourceSet的概念
+
+> SourceSet-源代码合集-源集，是java插件用来描述和管理源代码及其资源的一个抽象概念，是一个java源代码文件和资源文件的集合。通过源集，我们可以非常方便地访问源代码目录，设置源集的属性，更改源集的java目录或者资源文件等。
+>
+> 有了源集，我们就能针对不同的业务和应用对我们源代码进行分组，比如用于主要业务产品的main以及用于单元测试的test，责任分明、清晰。它们两个也是java插件默认内置的两个标准集。
+>
+> java插件在Project下为我们提供了一个sourceSets属性以及一个sourceSets{}闭包来访问和配置源集。sourceSets是一个SourceSetContainer。
+>
+> - 遍历源代码集合
+>
+>   ```groovy
+>   sourceSets.all {
+>       println "源代码集：name: ${name}"
+>   }
+>   ```
+>
+> - 输出源代码集路径
+>
+>   ```groovy
+>   sourceSets.all {
+>       println "源代码集：srcDirs: ${java.srcDirs}"
+>   }
+>   ```
+>
+>   源代码集：srcDirs: [/Users/xx/AndroidStudioProjects/GradleApplication/app/src/androidTest/java]
+>   源代码集：srcDirs: [/Users/xx/AndroidStudioProjects/GradleApplication/app/src/androidTestDebug/java]
+>   源代码集：srcDirs: [/Users/xx/AndroidStudioProjects/GradleApplication/app/src/debug/java]
+>   源代码集：srcDirs: [/Users/xx/AndroidStudioProjects/GradleApplication/app/src/main/java]
+>   源代码集：srcDirs: [/Users/xx/AndroidStudioProjects/GradleApplication/app/src/release/java]
+>   源代码集：srcDirs: [/Users/xx/AndroidStudioProjects/GradleApplication/app/src/test/java]
+>   源代码集：srcDirs: [/Users/xx/AndroidStudioProjects/GradleApplication/app/src/testDebug/java]
+>   源代码集：srcDirs: [/Users/xx/AndroidStudioProjects/GradleApplication/app/src/testRelease/java]
+>
+> - 源代码集合的资源文件
+>
+>   ```groovy
+>   sourceSets.all {
+>       println "源代码集：srcDirs: ${resources}"
+>   }
+>   ```
+>
+>    source=[src/androidTest/resources]
+>    source=[src/androidTestDebug/resour
+>    source=[src/debug/resources]
+>    source=[src/main/resources]
+>    source=[src/release/resources]
+>    source=[src/test/resources]
+>    source=[src/testDebug/resources]
+>    source=[src/testRelease/resources]
+>
+> - 更改源代码集路径
+>
+>   ```groovy
+>   def modules = src_root.list().toList().stream()
+>           .filter(
+>                   new Predicate<String>() {
+>                       @Override
+>                       boolean test(String name) {
+>                           return name == 'main' || (name.startsWith('xx_') && new File(src_root, 		name).isDirectory())
+>                       }
+>                   }).collect(Collectors.toList())
+>   
+>   def moduleSrc = modules.stream()
+>           .map(
+>                   new Function() {
+>                       @Override
+>                       Object apply(Object moduleName) {
+>                           return ['src', moduleName, 'java'].join('/')
+>                       }
+>                   })
+>           .collect(Collectors.toList())
+>   
+>       def moduleRes = p_modules.stream()
+>           .map(
+>               new Function() {
+>                   @Override
+>                   Object apply(Object moduleName) {
+>                       return ['src', moduleName, 'res'].join('/')
+>                   }
+>               }).collect(Collectors.toList())
+>   
+>   sourceSets {
+>       main {
+>         	// srcDirs是一个集合，以上代码表示指定java源代码集合为src下，main文件夹和xx_开头的文件夹
+>           java.srcDirs = moduleSrc
+>         	// 同理，资源文件集
+>        		res.srcDirs = moduleRes
+>       }
+>   }
+>   ```
+
+#### 6.6 java插件添加的任务
