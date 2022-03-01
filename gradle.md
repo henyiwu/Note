@@ -1772,13 +1772,13 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >
 >   ```
 >   wangzhiping@wangzhiping-PC:~/AndroidStudioProjects/GradleTEst$ gradle ex53CustomTask
->   
+>     
 >   > Configure project :app
 >   这是一个通过自定义插件创建的task
->   
+>     
 >   > Task :app:ex53CustomTask
 >   ex53CustomTask do Last
->   
+>     
 >   BUILD SUCCESSFUL in 984ms
 >   ```
 
@@ -1996,7 +1996,7 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >                           return name == 'main' || (name.startsWith('xx_') && new File(src_root, 		name).isDirectory())
 >                       }
 >                   }).collect(Collectors.toList())
->   
+>     
 >   def moduleSrc = modules.stream()
 >           .map(
 >                   new Function() {
@@ -2006,7 +2006,7 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >                       }
 >                   })
 >           .collect(Collectors.toList())
->   
+>     
 >       def moduleRes = p_modules.stream()
 >           .map(
 >               new Function() {
@@ -2015,7 +2015,7 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >                       return ['src', moduleName, 'res'].join('/')
 >                   }
 >               }).collect(Collectors.toList())
->   
+>     
 >   sourceSets {
 >       main {
 >         	// srcDirs是一个集合，以上代码表示指定java源代码集合为src下，main文件夹和xx_开头的文件夹
@@ -2129,9 +2129,9 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >
 >   ```
 >   buildScript块的repositories主要是为了Gradle脚本自身的执行，获取脚本依赖插件。也就是说，buildScript是用来加载Gradle脚本自身需要使用的资源，可以声明的资源包括依赖项、第三方插件、maven仓库地址等。
->   
+>     
 >   allprojects块的repositories用于多项目构建，为所有项目提供共同的所需依赖包。而子项目可以配置自己的repositories以获取自己独需的依赖包。
->   
+>     
 >   subprojects块的repositories用于配置这个项目的子项目。使用多模块项目时，不同模块之间有相同的配置，导致重复配置，可以将相同的部分抽取出来，使用配置注入的技术完成子项目的配置。根项目就像一个容器, subprojects 方法遍历这个容器的所有元素并且注入指定的配置。allprojects是对所有project的配置，包括Root Project。而subprojects是对所有Child Project的配置。
 >   ```
 
@@ -2235,9 +2235,9 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >
 >   ```groovy
 >   apply plugin : 'com.android.application'
->   
->   android {
 >     
+>   android {
+>       
 >   }
 >   ```
 
@@ -2270,28 +2270,28 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >
 >   ```groovy
 >   apply plugin: 'com.android.application'
->   
+>     
 >   android {
 >       defaultConfig {
 >           applicationId application_id
 >           versionCode version_code
 >           versionName version_name
 >       }
->   
+>     
 >       signingConfigs {
 >       		// 签名相关配置
 >       }
->   
->   		buildTypes {
+>     
+>   	buildTypes {
 >           debug {
->               
+>                 
 >           }
->   
+>     
 >           release {
->               
+>                 
 >           }
 >       }
->   
+>     
 >       productFlavors {
 >           publish {
 >           }
@@ -2299,39 +2299,39 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >               buildConfigField "boolean", "IS_RELEASE_PACKAGE", "false"
 >           }
 >       }
->   
+>     
 >       aaptOptions {
 >           cruncherEnabled = false
 >           useNewCruncher = false
 >       }
->   
+>     
 >       compileOptions {
 >           sourceCompatibility JavaVersion.VERSION_1_8
 >           targetCompatibility JavaVersion.VERSION_1_8
 >       }
->   
+>     
 >       kotlinOptions {
 >           jvmTarget = '1.8'
 >       }
->   
+>     
 >       buildFeatures {
 >           viewBinding true
 >       }
 >   }
->   
+>     
 >   dependencies {
 >       implementation fileTree(dir: 'libs', include: ['*.jar'])
 >       implementation fileTree(dir: 'libs', include: ['*.aar'])
 >       implementation project(":lib-center")
 >       ...
 >   }
->   
+>     
 >   project.afterEvaluate { project ->
 >       project.android.buildTypes.all { buildType ->
 >           println(">>>>>> 当前编译的签名信息 = ${buildType.signingConfig.toString()}")
 >       }
 >   }
->   
+>     
 >   println(">>>>>>当前使用的gradle版本=" + project.gradle.gradleVersion)
 >   ```
 >
@@ -2423,7 +2423,7 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >           debug {
 >              ...
 >           }
->   
+>     
 >           release {
 >               debuggable = false
 >               jniDebuggable false
@@ -2460,7 +2460,7 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >   android {
 >   		compileSdkVersion 23
 >   		buildToolsVersion "23.0.1"
->   		
+>   		  
 >   		defaultConfig {
 >   				applicationId "xxx.xxx.xxx"
 >   				minSdkVersion 19
@@ -2609,15 +2609,15 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >   ```
 >       buildTypes {
 >           debug {
->   
+>     
 >           }
->   
+>     
 >           release {
->              
+>                
 >           }
 >           // 自定义
 >           vip {
->           
+>             
 >           }
 >       }
 >   ```
@@ -2639,7 +2639,7 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >           debug {
 >               debuggable true
 >           }
->   
+>     
 >           release {
 >               debuggable = false
 >           }
@@ -2723,7 +2723,7 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >
 >   ```groovy
 >   android {
->   		applicationVariants.all { variant ->
+>   	applicationVariants.all { variant ->
 >           variant.outputs.all {
 >               // 定义apk的名字，拼接variant的版本号
 >               def apkName = "${variant.versionName}"
@@ -2741,4 +2741,79 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >   ApplicationVariants是一个DomainObjectCollection集合，我们可以通过all方法遍历，遍历的每一个variant都是一个生成的产物。例如默认的有debug和release两个产物。
 >
 >   ApplicationVariants中的variant都是ApplicationVariant，它有一个outputs作为它的输出。每个ApplicationVariants至少有一个输出，也可以有多个，所有这里的outputs是一个list集合，遍历它，如果它的名字是以.apk结尾的话，就是我们要修改的文件。
+>   
+> - variant
+>
+>   遍历的variant是buildType，比如我们创建一个vip的buildType，再遍历
+>
+>   ```groovy
+>       applicationVariants.all { variant ->
+>           variant.outputs.all {
+>               println "遍历到一个variant flavorName $variant.name"
+>               println "遍历到一个variant versionName $variant.versionName"
+>           }
+>       }
+>   ```
+>
+>   遍历到一个variant flavorName debug
+>   遍历到一个variant versionName 1.0
+>   遍历到一个variant flavorName release
+>   遍历到一个variant versionName 1.0
+>   遍历到一个variant flavorName vip
+>   遍历到一个variant versionName 1.0
+
+#### 动态生成版本信息
+
+> 一般版本号由3部分构成：major.minor.patch，第一个是主版本号，第二个是副版本号，第三个是补丁号。对应1.0.0
+
+##### 9.3.1 最原始方式
+
+> 最开始的时候我们都是配置在build文件下的，例如：
+>
+> ```groovy
+> android {
+> 	compileSdkVersion 23
+> 	buildToolsVersion "23.0.1"
+> 	
+> 	defaultConfig {
+> 		application "org.xxx.xxx"
+> 		minSdkVersion 14
+> 		targetSdkVersion 23
+> 		versionCode 1
+> 		versionName "1.0.0"
+> 	}
+> }
+> ```
+>
+> 这种方式我们直接写在versionName后面，比较直观，但这个方式有个很大的问题，就是修改不方便，特别是当build文件中有很多代码时，不容易找到，而且修改容易出错。
+
+##### 9.3.2 分模块的方式
+
+> 新建一个version.gradle文件
+>
+> - ~/version.gradle
+>
+>   ```groovy
+>   ext {
+>       appVersionApp = 1
+>       appVersionName = "1.0.0"
+>   }
+>   ```
+>
+>   ext表明要为当前project创建扩展属性，以供其他脚本引用。它就像我们的变量一样，创建好之后，在build.gradle中引用它。
+>
+> - app/build.gradle
+>
+>   ```groovy
+>   // 引用上一级目录的version.gradle脚本
+>   apply from : '../version.gradle'
+>   
+>   android {
+>       ...
+>       defaultConfig {
+>           versionCode appVersionCode
+>           versionName appVersionName
+>       }
+>   }
+>   ```
 
