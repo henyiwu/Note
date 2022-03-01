@@ -2292,7 +2292,6 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >           }
 >       }
 >   
->       flavorDimensions 'pandora'
 >       productFlavors {
 >           publish {
 >           }
@@ -2474,3 +2473,62 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >
 >   以上配置可以满足一个app的基本开发
 
+##### 8.1.1 applicationId
+
+> applicationId是ProductFlavor的一个属性，用于指定生成app的包名，默认情况下是null，那么构建时，会从我们的androidManifest.xml文件中读取，manifest标签package属性值。
+
+##### 8.1.2 minSdkVersion
+
+> minSdkVersion是ProductFlavor的一个方法，它可以指定我们的app最低支持的Android操作系统，其对应的值是Android SDK的api level。
+
+##### 8.1.3 targetSdkVersion
+
+> 这个用于配制我们是基于哪个Android SDK开发，它的可选值与minSdkVersion一样，没有配置的时候也会从androidManifest.xml中读取。
+
+##### 8.1.4 versionCode
+
+> 也是ProductFlavor中的一个属性，用于配制app内部版本号，是一个常数值，没有配置的时候从androidManifest.xml读取。
+
+###### 8.1.5 versionName
+
+> 和versionCode相似，用于配制app的版本名称，其值是字符串，让用户知道当前的app版本。
+
+###### 8.1.8 signingConfig
+
+> 配制默认签名信息，对生成的app签名，也是ProductFlavor的一个属性。
+>
+> - signingConfig
+>
+>   ````groovy
+>       signingConfigs {
+>           Properties keyProperties = new Properties()
+>           keyProperties.load(new FileInputStream(file("${project.rootDir}/buildcfg/xxx/keystore.properties")))
+>   
+>           debug {
+>               storeFile file("${project.rootDir}" + keyProperties["debugStoreFile"])
+>               keyAlias keyProperties["debugKeyAlias"]
+>               storePassword keyProperties["debugStorePassword"]
+>               keyPassword keyProperties["debugKeyPassword"]
+>           }
+>   
+>           release {
+>               storeFile file("${project.rootDir}" + keyProperties["releaseStoreFile"])
+>               keyAlias keyProperties["releaseKeyAlias"]
+>               storePassword keyProperties["releaseStorePassword"]
+>               keyPassword keyProperties["releaseKeyPassword"]
+>           }
+>       }
+>   ````
+>
+> - keystore.properties
+>
+>   ```properties
+>   releaseStoreFile=/buildcfg/xxxx/xxxx.keystore
+>   releaseStorePassword=xxxx
+>   releaseKeyAlias=xxxx
+>   releaseKeyPassword= xxxx
+>   debugStoreFile=/buildcfg/xxxx/xxxx.keystore
+>   debugStorePassword= xxxx
+>   debugKeyAlias=xxxx
+>   debugKeyPassword= xxxxx
+>   ```
