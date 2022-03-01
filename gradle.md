@@ -2265,3 +2265,185 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >   ```
 >
 >   main文件夹与Java文件结构相比，多了AndroidManifest.xml和res这两个属于Android特有的文件目录。
+>
+> - app/build.gradle
+>
+>   ```groovy
+>   apply plugin: 'com.android.application'
+>   
+>   android {
+>       defaultConfig {
+>           applicationId application_id
+>           versionCode version_code
+>           versionName version_name
+>       }
+>   
+>       signingConfigs {
+>       		// 签名相关配置
+>       }
+>   
+>   		buildTypes {
+>           debug {
+>               
+>           }
+>   
+>           release {
+>               
+>           }
+>       }
+>   
+>       flavorDimensions 'pandora'
+>       productFlavors {
+>           publish {
+>           }
+>           develop {
+>               buildConfigField "boolean", "IS_RELEASE_PACKAGE", "false"
+>           }
+>       }
+>   
+>       aaptOptions {
+>           cruncherEnabled = false
+>           useNewCruncher = false
+>       }
+>   
+>       compileOptions {
+>           sourceCompatibility JavaVersion.VERSION_1_8
+>           targetCompatibility JavaVersion.VERSION_1_8
+>       }
+>   
+>       kotlinOptions {
+>           jvmTarget = '1.8'
+>       }
+>   
+>       buildFeatures {
+>           viewBinding true
+>       }
+>   }
+>   
+>   dependencies {
+>       implementation fileTree(dir: 'libs', include: ['*.jar'])
+>       implementation fileTree(dir: 'libs', include: ['*.aar'])
+>       implementation project(":lib-center")
+>       ...
+>   }
+>   
+>   project.afterEvaluate { project ->
+>       project.android.buildTypes.all { buildType ->
+>           println(">>>>>> 当前编译的签名信息 = ${buildType.signingConfig.toString()}")
+>       }
+>   }
+>   
+>   println(">>>>>>当前使用的gradle版本=" + project.gradle.gradleVersion)
+>   ```
+>
+>   Android Gradle 工程的配置，都是在android{}中，这是唯一的入口，通过它，可以对Android Gradle工程进行自定义的配置，具体的实现是com.android.build.gradle.AppExtension
+
+##### 7.4.1 compileSdkVersion
+
+> 编译Android工程的SDK版本，原型是一个compileSdkVersion方法
+>
+> ```java
+> public void compileSdkVersion(String version) {
+> 		checkWritability()
+> 		this.target = version;
+> }
+> ```
+
+- build.gradle
+
+  ```groovy
+  android {
+      compileSdkVersion Integer.parseInt("${CompileSdkVersion}")
+  }
+  ```
+
+- 此外，还有一个setCompileSdkVersion
+
+  ```java
+  public void setCompileSdkVersion(int apiLevel) {
+  		compileSdkVersion(apiLevel)
+  }
+  ```
+
+- 使用方法
+
+  ```groovy
+  android.compileSdkVersion = 23
+  android.compileSdkVersion = 'android-23'
+  ```
+
+##### 7.4.2 buildToolsVersion
+
+> buildToolsVersion "23.0.1"表示我们使用的android构件工具的版本，我们可以在Android SDK目录里看到，它是一个工具包，包括aapt、dex等工具，它的原型也是一个方法：
+>
+> ```java
+> public void buildToolsVersion(String version) {
+> 		checkWritability();
+> 		buildToolsVersion = FullRevision.parseRevision(version);
+> }
+> 
+> @Override
+> public String getBuildToolsVersion() {
+> 		return buildToolsRevision.toString();
+> }
+> ```
+>
+> 从源代码可以看出，我们可以通过buildToolsVersion方法赋值，也可以通过android.buildToolsVersion属性读写它的值。
+
+##### 7.4.3 defaultConfig
+
+> defaultConfig是默认的配置，它是一个ProductFlavor。ProductFlavor允许我们根据不同的情况生成多个不同的APK包，比如多渠道打包。如果不针对我们自定义的ProductFlavor单独配置的话，会为这个ProductFlavor使用默认的defaultConfig的配置。
+>
+> - build.gradle
+>
+>   ```groovy
+>   defaultConfig {
+>     	// 包名
+>       applicationId application_id
+>       // 版本号
+>     	versionCode version_code
+>       // 版本名
+>     	versionName version_name
+>     	// 最低支持的android系统api
+>     	minSdkVersion Integer.parseInt("${MinSdkVersion}")
+>       // 基于哪个android版本开发的
+>     	targetSdkVersion Integer.parseInt("${TargetSdkVersion}")
+>   }
+>   ```
+>
+>   以上所有类都对应ProductFlavor类里的方法或属性。
+
+##### 7.4.4 buildTypes
+
+> BuildTypes是一个NamedDomainObjectContainer类型，是一个域对象，和sourceSet一样。buildTypes里有release、debug等。我们可以在buildTypes{}里增加任意多个我们需要构建的类型，Gradle会帮我们自动创建一个对应的buildType，名字就是我们定义的名字。
+>
+> - build.gradle
+>
+>   ```
+>       buildTypes {
+>           debug {
+>              ...
+>           }
+>   
+>           release {
+>               debuggable = false
+>               jniDebuggable false
+>               renderscriptDebuggable false
+>               renderscriptOptimLevel 3
+>               //混淆
+>               minifyEnabled true
+>               //Zipalign优化
+>               zipAlignEnabled true
+>               // 移除无用的resource文件
+>               shrinkResources true
+>               // 两个混淆文件
+>               // 1. getDefaultProguardFile('proguard-android.txt')，默认的文件，在android-sdk/tools/proguard/目录下
+>               // 2. proguard-rules.pro我们自己写的混淆文件
+>               proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+>               signingConfig signingConfigs.release
+>           }
+>       }
+>   ```
+
+#### 7.5 Android Gradle 任务
+
