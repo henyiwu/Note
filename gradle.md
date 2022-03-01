@@ -1335,7 +1335,7 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 
   打包命令为gradle -Pbuild_apps=shoufa build时，比gradle -Pbuild_apps=all build，少执行了小米和华为两个打包任务，应为它们的onlyIf表达式返回false
 
-#### 4.9任务规则
+#### 4.9 任务规则
 
 > 我们创建的任务都在TaskContainer里，由其进行管理。所以当我们访问任务的时候都是通过TaskContainer进行访问，二TaskContainer又是一个NamedDomainObjectCollection，所以说我们的任务规则是NamedDomainObjectCollection的规则。
 >
@@ -2201,7 +2201,7 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 
 ### 7 Android Gradle 插件
 
-### 7.1 Android Gradle 插件简介
+#### 7.1 Android Gradle 插件简介
 
 > 从Gradle的角度来看，Android插件其实就是Gradle的一个第三方插件，它是由Google的Android团队开发的
 
@@ -2678,5 +2678,28 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 
 除了会生成对应的sourceSet外，每一个BuildType还会生成相应的assemble任务，比如常用的assmebleRelease和assembleDebug就是Android Gradle自动生成的两个task任务，它们对应release和debug这两个BuildType自动生成的，执行相应的assemeble任务，就能生成对应BuildType的所有apk。
 
+#### 8.4 使用混淆
 
+> 混淆是一个非常有用的功能，不仅能够优化我们的代码，让apk包变得更小，还可以混淆我们的代码，让反编译的人也不容易看懂业务逻辑，一般release版本需要混淆，debug版本不需要，混淆后就无法断电跟踪调试了。
+>
+> 要启用混淆，把BuildType属性的minifyEnabled值设置为true即可。
+>
+> 再配制混淆文件。
+>
+> ```groovy
+>     buildTypes {
+>         release {
+>             minifyEnabled true
+> 	          proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+>         }
+>     }
+> ```
+
+#### 8.5 启用zipAlignEnabled优化
+
+> zipAlignEnabled是android为我们提供的一个整理优化的apk文件工具，它能提高系统和应用的运行效率，更快地读写apk中的资源，降低内存的使用。所以对于要发布的app，在发布之前一定要使用zipalign优化
+>
+> Android Gradle提供了开启zipalign优化更简便的方式，我们只需要打开配制即可，剩下的操作，如调用sdk目录下的zipalign工具进行处理等，Android Gradle会帮我们搞定。
+
+### 9. Android Gradle 高级自定义
 
