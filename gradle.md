@@ -2489,11 +2489,11 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 
 > 也是ProductFlavor中的一个属性，用于配制app内部版本号，是一个常数值，没有配置的时候从androidManifest.xml读取。
 
-###### 8.1.5 versionName
+##### 8.1.5 versionName
 
 > 和versionCode相似，用于配制app的版本名称，其值是字符串，让用户知道当前的app版本。
 
-###### 8.1.8 signingConfig
+##### 8.1.8 signingConfig
 
 > 配制默认签名信息，对生成的app签名，也是ProductFlavor的一个属性。
 >
@@ -2532,3 +2532,151 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >   debugKeyAlias=xxxx
 >   debugKeyPassword= xxxxx
 >   ```
+
+##### 8.1.9 proguardFile
+
+> 用于配制app proguard混淆所使用的ProGuard配置文件，它是ProductFlavor的一个方法，接受一个文件作为参数。
+
+##### 8.1.10 proguardFiles
+
+> 同上，配制多个混淆文件。
+
+#### 8.2 配制签名信息
+
+> 一个app只有在签名后才能发布、安装、应用，签名是保护app的方式，标记该app的唯一性。如果app被恶意篡改，签名就不一样了，就无法安装升级，一定程度上也保护了我们的app。
+>
+> 要对app进行签名，需要有一个签名证书文件。
+>
+> 一般app有debug和release两种模式，我们可以针对两种模式采用不同的签名方式，一般debug的时候，android SDK已经提供了一个默认的debug签名证书，我们可以直接使用。但是发布的时候，release模式构建时，我们要配制使用自己的签名。
+
+- 签名配制
+
+  ```groovy
+      signingConfigs {
+          Properties keyProperties = new Properties()
+          keyProperties.load(new FileInputStream(file("${project.rootDir}/buildcfg/xxx/keystore.properties")))
+  
+          debug {
+              storeFile file("${project.rootDir}" + keyProperties["debugStoreFile"])
+              keyAlias keyProperties["debugKeyAlias"]
+              storePassword keyProperties["debugStorePassword"]
+              keyPassword keyProperties["debugKeyPassword"]
+          }
+  
+          release {
+              storeFile file("${project.rootDir}" + keyProperties["releaseStoreFile"])
+              keyAlias keyProperties["releaseKeyAlias"]
+              storePassword keyProperties["releaseStorePassword"]
+              keyPassword keyProperties["releaseKeyPassword"]
+          }
+      }
+  ```
+
+  SigningConfigs是Android的一个方法，它接受一个域对象作为参数，一个SigningConfig就是一个签名配制
+
+  storeFile：签名证书文件
+
+  storePassword：签名证书文件的密码
+
+  storeType：签名证书的类型
+
+  keyAlias：签名证书中密钥别名
+
+  keyPassword：签名证书中该密钥的密码
+
+  默认情况下，debug模式的签名已经被配置好了，使用的是android SDK自动生成的debug证书，它一般位于$HOME/.android/debug.keystore，其key和密码都是已知的，一般情况下我们不需要单独配置debug模式的签名信息。
+
+- 使用签名
+
+  ```groovy
+      buildTypes {
+          debug {
+              signingConfig signingConfigs.debug
+          }
+  
+          release {
+              signingConfig signingConfigs.release
+          }
+      }
+  ```
+
+#### 8.3 构建的应用类型
+
+> 在android gradle 工程中，android gradle 已经帮我们配置了debug和release两个构建类型，这两种模式的主要差别在于，能够在设备上调试以及签名不一样，其他代码资源都是一样的。
+>
+> - buildTypes
+>
+>   ```
+>       buildTypes {
+>           debug {
+>   
+>           }
+>   
+>           release {
+>              
+>           }
+>           // 自定义
+>           vip {
+>           
+>           }
+>       }
+>   ```
+>
+>   如果还想新增构建类型，在buildTypes{}代码块中继续添加元素就可以，buildTypes和signingConfigs一样，也是Android的一个方法，接受的参数是一个域对象NamedDomainObjectContainer。添加的每一个都是BuildType类型。
+
+##### 8.3.1 applicationIdSuffix
+
+> BuildType的一个属性，用于配制基于默认applicationId的后缀，比如默认defaultConfig中配制的applicationId为com.hello.world，我们在debug的BuildType中指定applicationIdSuffix为.debug，那么生成的debug apk包名为com.hello.world.debug。
+
+##### 8.3.2 debuggable
+
+> BuildType的一个属性，用于配制是否可以生成一个可供调试的apk。
+>
+> - buildType
+>
+>   ```
+>       buildTypes {
+>           debug {
+>               debuggable true
+>           }
+>   
+>           release {
+>               debuggable = false
+>           }
+>       }
+>   ```
+
+##### 8.3.3 jniDebuggable
+
+> 类似于debuggable，是否生成可供jni调试的apk包。
+
+
+
+##### 8.3.4 minifyEnabled
+
+> BuildType的一个属性，用于配制该BuildType是否启用Proguard混淆。
+
+##### 8.3.5 multiDexEnabled
+
+> BuildType的一个属性，用于配制该BuildType是否启用自动拆分多个Dex的功能。一般用于程序中代码太多了，超过了65535个方法的时候。
+
+##### 8.3.6 proguardFile/proguardFiles
+
+> 配制混淆文件
+
+##### 8.3.8 shrinkResources
+
+> BuildType的一个属性，用于配制是否启动自动清理未使用的资源，默认为false
+
+##### 8.3.9 signingConfig
+
+> 配制签名文件
+
+每一个BuildType都会生成一个sourceSet，默认位置为src//，一个sourceSet包含源代码，资源文件信息，在android中就包含了java源代码，res资源文件以及androidManifest文件。所以针对不同的BuildType，我们可以单独为其指定java源代码，res资源等。只要把他们放到src//下相应的位置即可，在构建的时候，Android Gradle 会优先使用它们代替main下相关文件。
+
+另外需要注意，因为每个buildType都会生成一个SourceSet，所以新增的buildType名字一定要注意，不能是main和androidTest，因为它们已经被系统占用，同时每个buildType之间名称不能相同。
+
+除了会生成对应的sourceSet外，每一个BuildType还会生成相应的assemble任务，比如常用的assmebleRelease和assembleDebug就是Android Gradle自动生成的两个task任务，它们对应release和debug这两个BuildType自动生成的，执行相应的assemeble任务，就能生成对应BuildType的所有apk。
+
+
+
