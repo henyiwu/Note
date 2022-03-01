@@ -2437,7 +2437,7 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >               // 移除无用的resource文件
 >               shrinkResources true
 >               // 两个混淆文件
->               // 1. getDefaultProguardFile('proguard-android.txt')，默认的文件，在android-sdk/tools/proguard/目录下
+>               // 1. getDefaultProguardFile('proguard-android.txt')，默认的文件，在android-sdk/tools/proguard/目录下，主要是基本组件的防混淆，例如四大组件。
 >               // 2. proguard-rules.pro我们自己写的混淆文件
 >               proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
 >               signingConfig signingConfigs.release
@@ -2446,4 +2446,31 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >   ```
 
 #### 7.5 Android Gradle 任务
+
+> Android插件是基于Java的插件，所以Android插件基本上包含了所有Java插件的功能，包括继承的任务，比如assemble、check、build等。除此之外，Android在大类上还添加了connectedCheck、deviceCheck、lint、install、uninstall等任务，这些是属于Android特有的功能。
+
+### 8. 自定义Android Gradle 工程
+
+#### 8.1 defaultConfig 默认配置
+
+> DefaultConfig是Android对象中的一个配置块，负责定义所有的默认配置，它是一个ProductFlavor，如果ProductFlavor没有被特殊定义配置的话，默认就会使用defaultConfig{}块指定的配置，比如报名、版本号、版本名等。
+>
+> - 一个基本的defaultConfig配置
+>
+>   ````
+>   android {
+>   		compileSdkVersion 23
+>   		buildToolsVersion "23.0.1"
+>   		
+>   		defaultConfig {
+>   				applicationId "xxx.xxx.xxx"
+>   				minSdkVersion 19
+>   				targetSdkVersion 23
+>   				versionCode 1
+>   				versionName "1.0"
+>   		}
+>   }
+>   ````
+>
+>   以上配置可以满足一个app的基本开发
 
