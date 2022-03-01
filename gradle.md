@@ -2027,3 +2027,241 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >   ```
 
 #### 6.6 java插件添加的任务
+
+> java插件主要包含以下task
+>
+> - java插件添加的通用任务
+>
+>   ```
+>   任务名称               类型             描述
+>   compileJava           JavaCompile     使用 javac 编译 Java 源文件
+>   processResources      Copy            把资源文件 copy 到生产的资源文件目录中
+>   classes               Task            组装产生的类和资源文件目录
+>   compileTestJava       JavaComplie     使用 javac 编译测试的 Java 源文件
+>   ProcessTestResource   Copy            把测试的资源文件 copy 到生产的资源文件目录中
+>   testClass             Task            组装产生的测试类和资源文件目录
+>   jar                   Jar             组装 Jar 文件
+>   javadoc               Javadoc         使用 javadoc 生成 Java API  文档
+>   test                  Test            使用 Junit 或 TestNG 进行单元测试
+>   uploadArchives        Upload          上传包含 Jar 的构建，用 archives{} 闭包进行配置
+>   clean                 Delete          清理构建生成的目录文件
+>   cleanTaskName         Delete          删除指定任务生成的文件，比如 cleanJar 会删除 Jar 任务生成的文件
+>   ```
+>
+> - 源集任务
+>
+>   ```
+>   任务名称                    类型              描述
+>   compileSourceaSetJava      JavaCompile      使用 javac 编译指定源集的 Java 源代码
+>   processSourceSetResources  Copy             把指定源集的资源文件复制到生产文件的资源目录中
+>   sourceSetClasses           Task             组装给定源集类和资源文件目录
+>   ```
+>
+>   运行任务的时候，列表中的任务名称中的sourceSet要换成源集的名称，比如main源集的名称是compileMainJava
+
+#### 6.7 Java插件添加的属性
+
+> ```dart
+> 属性名称                   类型                  描述
+> sourceSets           SourceSetContainer       Java 项目的源集，可以访问和配置源集
+> sourceCompatiblity   JavaVersion              编译 Java 源文件使用的版本
+> targeCompatiblity    JavaVersion              编译生成的类的 Java 版本
+> archivesBaseName     String                   打包 Java 或者 Zip 文件的名字
+> manifest             Manifest                 用于访问或者配置 manifest 清单文件
+> libsDir              File                     存放生成的类库目录
+> distsDir             File                     存放生成发布的文件目录
+> ```
+
+#### 6.8 多项目构建
+
+> 多项目构建，其实就是多个gradle项目一起构建，它们一起通过Settings.gradle配置管理。每个项目都有一个build文件对该项目进行配置，然后采用项目依赖，就可以实现多项目协作，这对于大项目开发，进行模块化非常有用。
+>
+> - 目录结构
+>
+>   ```
+>   ├── app
+>   │   ├── build.gradle
+>   │   ├── libs
+>   │   ├── proguard-rules.pro
+>   │   └── src
+>   │       ├── androidTest
+>   │       ├── main
+>   │       └── test
+>   ├── build.gradle
+>   ├── mylibrary
+>   │   ├── build.gradle
+>   │   └── src
+>   │       ├── androidTest
+>   │       ├── main
+>   │       └── test
+>   └── settings.gradle
+>   ```
+>
+> - settings.gradle
+>
+>   ```
+>   rootProject.name = "GradleApplication"
+>   include ':app'
+>   include ':mylibrary'
+>   ```
+>
+> - app/build.gradle
+>
+>   ```kotlin
+>   dependencies {
+>   	implementation project(':mylibrary')
+>   }
+>   ```
+>
+> - subprojects
+>
+>   在根目录中使用，遍历所有子项目
+>
+>   ```groovy
+>   subprojects {
+>       apply plugin : 'kotlin-android'
+>   }
+>   ```
+>
+>   例如，这样就让所有子项目都依赖了kotlin-android插件
+>
+> - buildscript、allprojects、subprojects的区别
+>
+>   ```
+>   buildScript块的repositories主要是为了Gradle脚本自身的执行，获取脚本依赖插件。也就是说，buildScript是用来加载Gradle脚本自身需要使用的资源，可以声明的资源包括依赖项、第三方插件、maven仓库地址等。
+>   
+>   allprojects块的repositories用于多项目构建，为所有项目提供共同的所需依赖包。而子项目可以配置自己的repositories以获取自己独需的依赖包。
+>   
+>   subprojects块的repositories用于配置这个项目的子项目。使用多模块项目时，不同模块之间有相同的配置，导致重复配置，可以将相同的部分抽取出来，使用配置注入的技术完成子项目的配置。根项目就像一个容器, subprojects 方法遍历这个容器的所有元素并且注入指定的配置。allprojects是对所有project的配置，包括Root Project。而subprojects是对所有Child Project的配置。
+>   ```
+
+#### 6.9 如何发布构件
+
+> 基于gradle6.7.1
+>
+> ```groovy
+> apply plugin: 'groovy'
+> apply plugin: 'kotlin'
+> apply plugin: 'maven-publish'
+> apply plugin: 'maven'
+> 
+> dependencies {
+>     implementation gradleApi()
+>     implementation localGroovy()
+> 		....
+> }
+> 
+> repositories {
+>     mavenCentral()
+>     google()
+> }
+> 
+> buildscript {
+>     ext.kotlin_version = '1.4.10'
+>     repositories {
+>         mavenCentral()
+>     }
+>     dependencies {
+>         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+>     }
+> }
+> compileKotlin {
+>     kotlinOptions {
+>         jvmTarget = "1.8"
+>     }
+> }
+> compileTestKotlin {
+>     kotlinOptions {
+>         jvmTarget = "1.8"
+>     }
+> }
+> 
+> def MAVEN_PATH = "$MAVEN_PATH"
+> def ARTIFACT_ID = 'xxxxxx'
+> def VERSION_NAME = '1.0.0'
+> def GROUP_ID = "xxxxxx"
+> uploadArchives {
+>     repositories {
+>         mavenDeployer {
+>             repository(url: MAVEN_PATH) {
+>                 authentication(userName: "userName", password: "password")
+>             }
+>             pom.project {
+>                 groupId GROUP_ID
+>                 artifactId ARTIFACT_ID
+>                 version VERSION_NAME
+>                 packaging 'aar'
+>             }
+>         }
+>     }
+> }
+> ```
+>
+> 同步后，运行publish任务即可，该任务属于maven-publish插件
+
+### 7 Android Gradle 插件
+
+### 7.1 Android Gradle 插件简介
+
+> 从Gradle的角度来看，Android插件其实就是Gradle的一个第三方插件，它是由Google的Android团队开发的
+
+#### 7.2 Android Gradle 插件分类
+
+> 1. App插件id：com.android.application
+> 2. Library插件id：com.android.library
+> 3. Test插件id：com.android.test
+>
+> 通过应用以上三种不同的插件，可以配置项目为一个Android App工程，或者Library工程，或者是一个Android Test测试工程。
+
+#### 7.3 应用Android Gradle 插件
+
+> 应用一个插件，必须知道它的id，并且配置它们的依赖classpath。
+>
+> - 根目录下build.gradle
+>
+>   ```groovy
+>   buildscript {
+>       repositories {
+>         	// jcenter()仓库，目前已过期 
+>       		jcenter()
+>       }
+>       dependencies {
+>           classpath "com.android.tools.build:gradle:4.0.2"
+>       }
+>   }
+>   ```
+>
+> - app/build.gradle
+>
+>   ```groovy
+>   apply plugin : 'com.android.application'
+>   
+>   android {
+>     
+>   }
+>   ```
+
+#### 7.4 Android Gradle 工程示例
+
+> Android Gradle 插件继承于Java插件，具有Java插件的特性，它也需要在Setting文件里通过include配置包含的子工程，也需要应用Android插件等。
+>
+> - app目录结构
+>
+>   ```
+>   ├── app
+>   │   ├── build.gradle
+>   │   ├── libs
+>   │   ├── proguard-rules.pro
+>   │   └── src
+>   │       ├── androidTest
+>   │       │   └── java
+>   │       ├── main
+>   │       │   ├── AndroidManifest.xml
+>   │       │   ├── java
+>   │       │   └── res
+>   │       └── test
+>   │           └── java
+>   ├── build.gradle
+>   ```
+>
+>   main文件夹与Java文件结构相比，多了AndroidManifest.xml和res这两个属于Android特有的文件目录。
