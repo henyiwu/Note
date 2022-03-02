@@ -2812,8 +2812,24 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >       ...
 >       defaultConfig {
 >           versionCode appVersionCode
->           versionName appVersionName
+>           versionName appVersionNam
 >       }
 >   }
 >   ```
+
+##### 9.3.3 使用命令行
+
+> gradle提供了执行shell命令非常简便的办法，就是exec。它是一个task任务，可以创建一个继承exec的任务来执行shell命令，但是比较麻烦。更方便的办法是直接在project里使用exec方法：
+>
+> - build.gradle
+>
+>   ```groovy
+>       exec {
+>           println "执行exec"
+>           commandLine 'git', 'status'
+>       }
+>   ```
+>   执行exec
+>   On branch wangzhiping/dev-v1.0.00
+>   Your branch is up to date with 'origin/wangzhiping/dev-v1.0.00'.
 
