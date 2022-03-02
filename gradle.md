@@ -2762,7 +2762,7 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >   遍历到一个variant flavorName vip
 >   遍历到一个variant versionName 1.0
 
-#### 动态生成版本信息
+#### 9.3 动态生成版本信息
 
 > 一般版本号由3部分构成：major.minor.patch，第一个是主版本号，第二个是副版本号，第三个是补丁号。对应1.0.0
 
@@ -2833,3 +2833,276 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >   On branch wangzhiping/dev-v1.0.00
 >   Your branch is up to date with 'origin/wangzhiping/dev-v1.0.00'.
 
+#### 9.5 动态配制AndroidManifest文件
+
+> 动态配制AndroidManifest文件，顾名思义就是可以在构建的过程中，动态修改AndroidManifest文件中的一些内容。
+>
+> - build.gradle
+>
+>   ```groovy
+>   android {
+>       defaultConfig {
+>           manifestPlaceholders = [
+>                   "JPUSH_CHANNEL"  : jpush_channel,
+>           ]
+>       }
+>   }
+>   ```
+>
+> - AndroidManifest.xml
+>
+>   ````xaml
+>   <application
+>   		<meta-data
+>           android:name="JPUSH_CHANNEL"
+>           android:value="${JPUSH_CHANNEL}"/>
+>   </application>
+>   ````
+>
+>   如果我们的渠道非常多的话，可以这样操作
+>
+> - build.gradle
+>
+>   ```
+>   // producFlavor可以理解为策略，例如不同的渠道包
+>   // buildType是指开发周期，例如debug和release，对用户来说无感知
+>   productFlavor {
+>   		google {
+>   		
+>   		}
+>   		baidu {
+>   		
+>   		}
+>   		productFlavors.all { flavor ->
+>           println "flavor $name"
+>           manifestPlaceholders.put("UMENG_CHANNEL", name)
+>       }
+>   }
+>   ```
+>
+>   Configure project :app
+>   flavor develop
+>   flavor publish
+
+#### 9.6 自定义你的BuildConfig
+
+> gradle提供了buildConfigField，我们可以自己添加常量到BuildConfig中。
+>
+> ```groovy
+> buildConfigField "boolean", "IS_RELEASE_PACKAGE", "true"
+> ```
+>
+> 它的函数原型是：
+>
+> ```java
+> // 参数1:字段类型
+> // 参数2:字段名称
+> // 参数3:字段的值钱
+> public void buildConfigField(
+> 		@Nonable String type,
+> 		@Nonable String name,
+> 		@Nonable String value){
+> 
+> }
+> ```
+
+#### 9.7 动态添加自定义的资源
+
+> 这里讲的自定义资源，是专门针对res/values类型资源的，它们不光可以在res/values文件夹里使用xml的方式定义，还可以在android gradle里定义，大大增加了构建的灵活性。
+>
+> - build.gradle
+>
+>   ```groovy
+>   productFlavors {
+>       publish {
+>           resValue 'string','channel_tips', 'boxPublish'
+>       }
+>       develop {
+>           buildConfigField "boolean", "IS_RELEASE_PACKAGE", "false"
+>           resValue 'string', 'channel_tips', 'boxDevelop'
+>       }
+>   }
+>   ```
+>
+> - build后，自动生成文件：build/generated/res/resValues/develop/debug/values/gradleResValues.xml
+>
+>   ```xml
+>   <?xml version="1.0" encoding="utf-8"?>
+>   <resources>
+>   
+>       <!-- Automatically generated file. DO NOT MODIFY -->
+>   
+>       <!-- Value from product flavor: develop -->
+>       <string name="channel_tips" translatable="false">boxDevelop</string>
+>   
+>   </resources>
+>   ```
+>
+>   当前build的是develop，所以生成的string是boxDevelop
+
+#### 9.8 编译选项
+
+> 有时候我们需要对我们java源代码的编码、源文件使用的jdk版本进行调优修改。比如需要配制源文件的编码为utf-8的编码，以兼容更多的字符；还比如我们想配制编译java源代码的级别为1.8，这样就可以使用override接口方法的继承等特性。
+>
+> ```groovy
+> android {
+> 		// 字段位于gradle.properties
+>     compileSdkVersion Integer.parseInt("${CompileSdkVersion}")
+>     buildToolsVersion "${BuildToolsVersion}"
+> }
+> 
+> compileOptions {
+>   	encoding = 'utf-8'
+>     sourceCompatibility JavaVersion.VERSION_1_8
+>     targetCompatibility JavaVersion.VERSION_1_8
+> 
+> ```
+
+#### 9.9 adb 操作选项配制
+
+> ```
+> adbOptions {
+> 		timeOutInMs = 5 * 1000 //设置超时时间5秒，执行adb命令超时的时间
+> 		// 有六个选项
+> 		// 1. -l 锁定该应用程序
+> 		// 2. -r 替换已经存在的应用程序，也就是强制安装
+> 		// 3. -t 允许测试包
+> 		// 4. -s 把应用安装到sd卡上
+> 		// 5. -d 允许进行降级安装
+> 		// 6. -g 为该应用授予所有运行时的权限
+> 		installOptions '-r','-s'  
+> }
+> ```
+
+#### 9.10 DEX选项选择
+
+> android中的java源代码被编译成class字节码后，在打包成apk的时候又会被dx命令优化成android虚拟机可执行的dex文件。dex文件比较紧凑，android做这个dex格式目的是为了让程序在android上运行得更快。对于这些dex文件的生成，android gradle插件已经帮我们做好了，android gradle会调用sdk中的dx命令进行处理。但有时候可能遇到提示内存不足的情况，为什么会提示内存不足呢？其实dx只是一个脚本，它调用的还是java编写的dx.jar库。默认情况下分配给dx的内存是1024m。
+>
+> - dexOptions
+>
+>   ```groovy
+>   public interface DexOptions {
+>     	boolean getIncreamental()
+>     	boolean getPreDexLibraries()
+>     	boolean getJumboMode()
+>     	String getJavaMaxHeapSize()
+>     	Integer getThreadCount()
+>   }
+>   ```
+>
+>   dexOptions共有5个属性
+>
+>   1. getIncreamental
+>
+>      用来配制是否开启dex的增量模式，默认为false。增量模式虽然速度更快一些，但是可能会不工作，要慎用。
+>
+>   2. javaMaxHeapSize
+>
+>      执行dx命令分配的最大堆内存，例如可以设置为2g
+>
+>      ```groovy
+>          dexOptions {
+>              javaMaxHeapSize "2g"
+>          }
+>      ```
+>
+>   3. JumboMode
+>
+>      用来配制是否开启Jumbo模式，有时候我们的工程量比较大，方法超过了65535个，需要开启jumbo模式才能构建成功。
+>
+>   4. preDexLibraries
+>
+>      用来配制是否预执行dex Libraries库工程，开启后会大大提高增量构建的速度，不过可能会影响clean构建的速度。默认值为true。有时候我们需要使用dx的--multi-dex选项生成多个dex，这导致和库工程有冲突的时候，需要将该选项设置为false。
+>
+>   5. threadCount
+>
+>      用来配制android gradle运行dx命令时使用的线程数，适当的线程数量可以提高dx的效率。
+
+#### 9.11 突破65535方法数限制
+
+> 为什么有这个限制？
+>
+> java文件都被打包成一个dex文件，这个文件是被优化过的，dalvik虚拟机的可执行文件，dalvik虚拟机在执行dex文件的时候，使用了short这个类型来索引dex文件中的方法，这就意味着单个dex文件最多可以被定义的方法为65535个。
+
+#### 9.12 自动清理未使用的资源
+
+> gradle为我们提供了shrinkResources，它是一种在构建时，在打包apk之前，会检测所有的资源，看看是否被引用，如果没有，那么这些资源就不会被打包到apk中，因为在这个过程中（构建时），android gradle构建系统会拿到所有的资源，不管是自己的还是第三方的，都一视同仁处理。resource shrinking要结合minifyEnabled使用，目的是减缩代码。
+>
+> - build.gradle
+>
+>   ```groovy
+>   release {
+>       //混淆
+>       minifyEnabled true
+>       // 移除无用的resource文件
+>       shrinkResources true
+>   }
+>   ```
+>
+>   Task :app:shrinkDevelopDebugRes
+>
+> 自动清理未使用的资源这个功能虽然好，但是也会有问题，比如用反射获取的资源文件，静态检测是检测不出来的，这时候就需要用android gradle提供的keep方法来配制哪些资源不被清理。
+>
+> - res/raw/keep.xml
+>
+>   ```xml
+>   <?xml version="1.0" encoding="utf-8"?>
+>   <resources xmlns:tools="http://schemas.android.com/tools"
+>       tools:keep="@string/ik_eid_prefix, @string/ik_szlm_proxy" />
+>   ```
+>
+>   keep方法的使用，我们需要新建一个xml文件来配制，文件目录是res/raw/keep.xml，然后通过tools:keep来设置，以逗号分隔多个属性。此外，对于这个keep.xml文件，android gradle构建系统最终打包的时候会清理它，不会把它打包到apk中，除非你在代码里通过R.raw.keep引用了它。
+>
+> 除了shrinkResource之外，android gradle还为我们提供了一个resConfigs，它属于ProductFlavor的一个方法，可让我们配置哪些资源才被打包进apk中，比如只有中文的资源，只有hdpi格式的图片等。这是非常重要的，比如support library和google play service这两个主要的大库，因为国际化的问题，都支持了几十种语言，但对于app来说，我们不需要那么多语言。
+>
+> - resConfigs
+>
+>   ```groovy
+>   defaultConfig {
+>     	// 只保留中文资源
+>       resConfigs "zh"
+>   }
+>   ```
+>
+>   
+
+### 10 Android Gradle 多项目构建
+
+> Android的多项目和其他基于gradle构建的多项目差不多，比如java多项目，groovy多项目，它们本身都是gradle多项目构建，唯一的区别是项目本身属性，比如这个项目是java库，那个是android app项目等。
+
+#### 10.1 Android 项目区别
+
+> android项目一般分为库项目、应用项目、测试项目，android gradle根据这些项目分别对应有3种插件，com.android.library、com.android.application、com.android.test。
+>
+> 库项目一般和java库非常相似，它比java多的是一些android特有的资源配置。一般一些具有公共特性的类，可以抽象成一个库工程，这样它们就可以被其他项目使用。
+>
+> 应用项目，一般只有一个，可以打包成我们可以发布的apk包，如果工程太复杂，它会引用很多库项目，以便组成一个最终的app发布。
+
+#### 10.2 Android 多项目设置
+
+> 多个项目的设置和gradle的多项目是一样的，android也是基于gradle的，所以项目其实是gradle的概念，项目本身的特性才是每个领域的细分和定义，如android项目、java项目等。
+>
+> - setting.gradle
+>
+>   ```groovy
+>   include ':app'
+>   include ':base-lib'
+>   ```
+>
+>   这样有三个项目，一个app、一个基础库base-lib，一个根project
+
+#### 10.3 库项目引用和配置
+
+> - app/build.gradle
+>
+>   ```groovy
+>   dependencies { 
+>   		implementation project(":lib-center")	
+>   }
+>   ```
+>
+>   android app也可以引用jar包，java lib打出来的包是jar包，android lib打出来的包是aar包。
+
+#### 10.4 库项目单独发布
+
+> 项目直接依赖一般适用于关联比较紧密，不可复用的项目，对于这类项目我们可以直接基于源代码项目的依赖。有时候一些项目，可以被其他项目复用，比如公共组件库，可以单独发布出去，被其他项目使用。
