@@ -1773,13 +1773,13 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >
 >   ```
 >   wangzhiping@wangzhiping-PC:~/AndroidStudioProjects/GradleTEst$ gradle ex53CustomTask
->       
+>         
 >   > Configure project :app
 >   这是一个通过自定义插件创建的task
->       
+>         
 >   > Task :app:ex53CustomTask
 >   ex53CustomTask do Last
->       
+>         
 >   BUILD SUCCESSFUL in 984ms
 >   ```
 
@@ -1997,7 +1997,7 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >                           return name == 'main' || (name.startsWith('xx_') && new File(src_root, 		name).isDirectory())
 >                       }
 >                   }).collect(Collectors.toList())
->               
+>                 
 >   def moduleSrc = modules.stream()
 >           .map(
 >                   new Function() {
@@ -2007,7 +2007,7 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >                       }
 >                   })
 >           .collect(Collectors.toList())
->               
+>                 
 >       def moduleRes = p_modules.stream()
 >           .map(
 >               new Function() {
@@ -2016,7 +2016,7 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >                       return ['src', moduleName, 'res'].join('/')
 >                   }
 >               }).collect(Collectors.toList())
->               
+>                 
 >   sourceSets {
 >       main {
 >         	// srcDirs是一个集合，以上代码表示指定java源代码集合为src下，main文件夹和xx_开头的文件夹
@@ -2130,9 +2130,9 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >
 >   ```
 >   buildScript块的repositories主要是为了Gradle脚本自身的执行，获取脚本依赖插件。也就是说，buildScript是用来加载Gradle脚本自身需要使用的资源，可以声明的资源包括依赖项、第三方插件、maven仓库地址等。
->               
+>                 
 >   allprojects块的repositories用于多项目构建，为所有项目提供共同的所需依赖包。而子项目可以配置自己的repositories以获取自己独需的依赖包。
->               
+>                 
 >   subprojects块的repositories用于配置这个项目的子项目。使用多模块项目时，不同模块之间有相同的配置，导致重复配置，可以将相同的部分抽取出来，使用配置注入的技术完成子项目的配置。根项目就像一个容器, subprojects 方法遍历这个容器的所有元素并且注入指定的配置。allprojects是对所有project的配置，包括Root Project。而subprojects是对所有Child Project的配置。
 >   ```
 
@@ -2200,7 +2200,7 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >
 > 同步后，运行publish任务即可，该任务属于maven-publish插件
 
-### 7 Android Gradle 插件
+### 7. Android Gradle 插件
 
 #### 7.1 Android Gradle 插件简介
 
@@ -2236,9 +2236,9 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >
 >   ```groovy
 >   apply plugin : 'com.android.application'
->               
->   android {
 >                 
+>   android {
+>                   
 >   }
 >   ```
 
@@ -2271,28 +2271,28 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >
 >   ```groovy
 >   apply plugin: 'com.android.application'
->               
+>                 
 >   android {
 >       defaultConfig {
 >           applicationId application_id
 >           versionCode version_code
 >           versionName version_name
 >       }
->               
+>                 
 >       signingConfigs {
 >       		// 签名相关配置
 >       }
->               
+>                 
 >   	buildTypes {
 >           debug {
->                           
+>                             
 >           }
->               
+>                 
 >           release {
->                           
+>                             
 >           }
 >       }
->               
+>                 
 >       productFlavors {
 >           publish {
 >           }
@@ -2300,39 +2300,39 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >               buildConfigField "boolean", "IS_RELEASE_PACKAGE", "false"
 >           }
 >       }
->               
+>                 
 >       aaptOptions {
 >           cruncherEnabled = false
 >           useNewCruncher = false
 >       }
->               
+>                 
 >       compileOptions {
 >           sourceCompatibility JavaVersion.VERSION_1_8
 >           targetCompatibility JavaVersion.VERSION_1_8
 >       }
->               
+>                 
 >       kotlinOptions {
 >           jvmTarget = '1.8'
 >       }
->               
+>                 
 >       buildFeatures {
 >           viewBinding true
 >       }
 >   }
->               
+>                 
 >   dependencies {
 >       implementation fileTree(dir: 'libs', include: ['*.jar'])
 >       implementation fileTree(dir: 'libs', include: ['*.aar'])
 >       implementation project(":lib-center")
 >       ...
 >   }
->               
+>                 
 >   project.afterEvaluate { project ->
 >       project.android.buildTypes.all { buildType ->
 >           println(">>>>>> 当前编译的签名信息 = ${buildType.signingConfig.toString()}")
 >       }
 >   }
->               
+>                 
 >   println(">>>>>>当前使用的gradle版本=" + project.gradle.gradleVersion)
 >   ```
 >
@@ -2424,7 +2424,7 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >           debug {
 >              ...
 >           }
->               
+>                 
 >           release {
 >               debuggable = false
 >               jniDebuggable false
@@ -2461,7 +2461,7 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >   android {
 >   		compileSdkVersion 23
 >   		buildToolsVersion "23.0.1"
->   		            
+>   		              
 >   		defaultConfig {
 >   				applicationId "xxx.xxx.xxx"
 >   				minSdkVersion 19
@@ -2610,15 +2610,15 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >   ```
 >       buildTypes {
 >           debug {
->               
+>                 
 >           }
->               
+>                 
 >           release {
->                          
+>                            
 >           }
 >           // 自定义
 >           vip {
->                       
+>                         
 >           }
 >       }
 >   ```
@@ -2640,7 +2640,7 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >           debug {
 >               debuggable true
 >           }
->               
+>                 
 >           release {
 >               debuggable = false
 >           }
@@ -2808,7 +2808,7 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >   ```groovy
 >   // 引用上一级目录的version.gradle脚本
 >   apply from : '../version.gradle'
->             
+>               
 >   android {
 >       ...
 >       defaultConfig {
@@ -2869,10 +2869,10 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >   // buildType是指开发周期，例如debug和release，对用户来说无感知
 >   productFlavor {
 >   		google {
->   		          
+>   		            
 >   		}
 >   		baidu {
->   		          
+>   		            
 >   		}
 >   		productFlavors.all { flavor ->
 >           println "flavor $name"
@@ -2930,12 +2930,12 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >   ```xml
 >   <?xml version="1.0" encoding="utf-8"?>
 >   <resources>
->             
+>               
 >       <!-- Automatically generated file. DO NOT MODIFY -->
->             
+>               
 >       <!-- Value from product flavor: develop -->
 >       <string name="channel_tips" translatable="false">boxDevelop</string>
->             
+>               
 >   </resources>
 >   ```
 >
@@ -3067,7 +3067,7 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >
 >   
 
-### 10 Android Gradle 多项目构建
+### 10. Android Gradle 多项目构建
 
 > Android的多项目和其他基于gradle构建的多项目差不多，比如java多项目，groovy多项目，它们本身都是gradle多项目构建，唯一的区别是项目本身属性，比如这个项目是java库，那个是android app项目等。
 
@@ -3188,19 +3188,19 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >         id 'org.jetbrains.kotlin.jvm'
 >         id 'maven-publish'
 >     }
->     
+>         
 >     java {
 >         sourceCompatibility = JavaVersion.VERSION_1_7
 >         targetCompatibility = JavaVersion.VERSION_1_7
 >     }
->     
+>         
 >     dependencies {
 >         implementation gradleApi()
 >     }
->     
+>         
 >     group 'com.example.plugin'
 >     version '1.0.5'
->     
+>         
 >     publishing {
 >         publications {
 >             myPlugin(MavenPublication) {
@@ -3254,3 +3254,74 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
   > myPlugin被应用
   >
   > 并且能够找到插件创建的customTask
+
+### 11. Android Gradle多渠道构建
+
+#### 11.1 多渠道构建的基本原理
+
+> 在Android Gradle中，定义了一个叫Build Variant的概念，直译是构建变体 —— 构建apk的产物。一个Build Variant = BuildType + Product Flavor，BuilType是构建类型，比如release和debug；Product Flavor是构建的渠道，比如Baidu、Google等，它们加起来就是baiduRelease、baiduDebug、googleRelease、googleDebug，公有这几种组合构建产出。Product Flavor也是多渠道构建的基础。
+>
+> 再或者Product Flavor可以定义为develop、publish，因此就有developDebug、publishDebug、developRelease、publishRelease这几种组合构建产出。
+
+- 新增一个Product Flavor
+
+  ```groovy
+      productFlavors {
+          google {
+  
+          }
+          baidu {
+              
+          }
+      }
+  ```
+
+  android gradle 为我们提供了productFlavors方法来添加不同的渠道，它接受域对象类型的ProductFlavor闭包作为其参数。每一个都是一个ProductFlavor类型的渠道。在NamedDomainObjectContainer中的名字就是渠道名。
+
+  以上的发布渠道配置之后，Android Gradle会生成很多task，基本上都属于BuildType + Product Flavor的方式生成的。比如assembleBaidu运行之后会生成Baidu渠道的release包和debug包，assembleRelease运行后会生成所有渠道的release包，而assembleBaiduRelease运行之后只生成Baidu的release包。除了生成task之外，每个ProductFlavor还可以有自己的SrouceSet，还可以有自己的Dependencis依赖，这意味着我们可以为每个渠道定义它们自己的资源、代码以及依赖的第三方库，这为我们自定义每个渠道提供了很大的灵活性。
+
+#### 11.3 多渠道构建定制
+
+> 多渠道的定制，其实就是对anroid gradle 插件的 ProductFlavor的配置，通过配置ProductFlavor达到灵活控制每一个渠道的目的。
+
+##### 11.3.1 applicationId
+
+> 它是ProductFlavor的属性，用于设置该渠道的包名。
+>
+> - build.gradle
+>
+>   ```groovy
+>   productFlavors {
+>       google {
+>           flavorDimensions "1.0.1"
+>           applicationId "org.example.google.test"
+>       }
+>       baidu {
+>           flavorDimensions "1.0.0"
+>           applicationId "org.example.baidu.test"
+>       }
+>   }
+>   ```
+>
+>   这样就可以让不同渠道的apk包有不同的包名
+
+##### 11.3.2 consumerProguardFiles
+
+> 既是一个属性，也有一个同名的方法，它只对android库项目起作用，当我们发布库项目生成一个aar包的时候，使用这个属性配置的混淆文件列表也会被打包到aar里一起发布，这样当应用项目引用这个aar包，并启用混淆的时候，会自动使用aar包里的混淆文件对aar包里的代码进行混淆，这样我们就不用对该aar包进行混淆配置了，因为它自带了：
+>
+> - build.gradle
+>
+>   ```groovy
+>   android {
+>   	productFlavors {
+>   		google {
+>   			consumerProguardFiles 'proguard-rules.pro', 'proguard-android.txt'
+>   		}
+>   	}
+>   }
+>   ```
+>
+>   还有一种是属性设置，属性设置的方式每次都是新的混淆文件列表，以前的会被清空。
+
+##### 11.3.13 dimension
+
