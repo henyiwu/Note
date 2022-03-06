@@ -1773,13 +1773,13 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >
 >   ```
 >   wangzhiping@wangzhiping-PC:~/AndroidStudioProjects/GradleTEst$ gradle ex53CustomTask
->         
+>             
 >   > Configure project :app
 >   这是一个通过自定义插件创建的task
->         
+>             
 >   > Task :app:ex53CustomTask
 >   ex53CustomTask do Last
->         
+>             
 >   BUILD SUCCESSFUL in 984ms
 >   ```
 
@@ -1997,7 +1997,7 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >                           return name == 'main' || (name.startsWith('xx_') && new File(src_root, 		name).isDirectory())
 >                       }
 >                   }).collect(Collectors.toList())
->                 
+>                     
 >   def moduleSrc = modules.stream()
 >           .map(
 >                   new Function() {
@@ -2007,7 +2007,7 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >                       }
 >                   })
 >           .collect(Collectors.toList())
->                 
+>                     
 >       def moduleRes = p_modules.stream()
 >           .map(
 >               new Function() {
@@ -2016,7 +2016,7 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >                       return ['src', moduleName, 'res'].join('/')
 >                   }
 >               }).collect(Collectors.toList())
->                 
+>                     
 >   sourceSets {
 >       main {
 >         	// srcDirs是一个集合，以上代码表示指定java源代码集合为src下，main文件夹和xx_开头的文件夹
@@ -2130,9 +2130,9 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >
 >   ```
 >   buildScript块的repositories主要是为了Gradle脚本自身的执行，获取脚本依赖插件。也就是说，buildScript是用来加载Gradle脚本自身需要使用的资源，可以声明的资源包括依赖项、第三方插件、maven仓库地址等。
->                 
+>                     
 >   allprojects块的repositories用于多项目构建，为所有项目提供共同的所需依赖包。而子项目可以配置自己的repositories以获取自己独需的依赖包。
->                 
+>                     
 >   subprojects块的repositories用于配置这个项目的子项目。使用多模块项目时，不同模块之间有相同的配置，导致重复配置，可以将相同的部分抽取出来，使用配置注入的技术完成子项目的配置。根项目就像一个容器, subprojects 方法遍历这个容器的所有元素并且注入指定的配置。allprojects是对所有project的配置，包括Root Project。而subprojects是对所有Child Project的配置。
 >   ```
 
@@ -2236,9 +2236,9 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >
 >   ```groovy
 >   apply plugin : 'com.android.application'
->                 
+>                     
 >   android {
->                   
+>                       
 >   }
 >   ```
 
@@ -2271,28 +2271,28 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >
 >   ```groovy
 >   apply plugin: 'com.android.application'
->                 
+>                     
 >   android {
 >       defaultConfig {
 >           applicationId application_id
 >           versionCode version_code
 >           versionName version_name
 >       }
->                 
+>                     
 >       signingConfigs {
 >       		// 签名相关配置
 >       }
->                 
+>                     
 >   	buildTypes {
 >           debug {
->                             
+>                                 
 >           }
->                 
+>                     
 >           release {
->                             
+>                                 
 >           }
 >       }
->                 
+>                     
 >       productFlavors {
 >           publish {
 >           }
@@ -2300,39 +2300,39 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >               buildConfigField "boolean", "IS_RELEASE_PACKAGE", "false"
 >           }
 >       }
->                 
+>                     
 >       aaptOptions {
 >           cruncherEnabled = false
 >           useNewCruncher = false
 >       }
->                 
+>                     
 >       compileOptions {
 >           sourceCompatibility JavaVersion.VERSION_1_8
 >           targetCompatibility JavaVersion.VERSION_1_8
 >       }
->                 
+>                     
 >       kotlinOptions {
 >           jvmTarget = '1.8'
 >       }
->                 
+>                     
 >       buildFeatures {
 >           viewBinding true
 >       }
 >   }
->                 
+>                     
 >   dependencies {
 >       implementation fileTree(dir: 'libs', include: ['*.jar'])
 >       implementation fileTree(dir: 'libs', include: ['*.aar'])
 >       implementation project(":lib-center")
 >       ...
 >   }
->                 
+>                     
 >   project.afterEvaluate { project ->
 >       project.android.buildTypes.all { buildType ->
 >           println(">>>>>> 当前编译的签名信息 = ${buildType.signingConfig.toString()}")
 >       }
 >   }
->                 
+>                     
 >   println(">>>>>>当前使用的gradle版本=" + project.gradle.gradleVersion)
 >   ```
 >
@@ -2424,7 +2424,7 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >           debug {
 >              ...
 >           }
->                 
+>                     
 >           release {
 >               debuggable = false
 >               jniDebuggable false
@@ -2461,7 +2461,7 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >   android {
 >   		compileSdkVersion 23
 >   		buildToolsVersion "23.0.1"
->   		              
+>   		                  
 >   		defaultConfig {
 >   				applicationId "xxx.xxx.xxx"
 >   				minSdkVersion 19
@@ -2610,15 +2610,15 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >   ```
 >       buildTypes {
 >           debug {
->                 
+>                     
 >           }
->                 
+>                     
 >           release {
->                            
+>                                
 >           }
 >           // 自定义
 >           vip {
->                         
+>                             
 >           }
 >       }
 >   ```
@@ -2640,7 +2640,7 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >           debug {
 >               debuggable true
 >           }
->                 
+>                     
 >           release {
 >               debuggable = false
 >           }
@@ -2808,7 +2808,7 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >   ```groovy
 >   // 引用上一级目录的version.gradle脚本
 >   apply from : '../version.gradle'
->               
+>                   
 >   android {
 >       ...
 >       defaultConfig {
@@ -2869,10 +2869,10 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >   // buildType是指开发周期，例如debug和release，对用户来说无感知
 >   productFlavor {
 >   		google {
->   		            
+>   		                
 >   		}
 >   		baidu {
->   		            
+>   		                
 >   		}
 >   		productFlavors.all { flavor ->
 >           println "flavor $name"
@@ -2930,12 +2930,12 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >   ```xml
 >   <?xml version="1.0" encoding="utf-8"?>
 >   <resources>
->               
+>                   
 >       <!-- Automatically generated file. DO NOT MODIFY -->
->               
+>                   
 >       <!-- Value from product flavor: develop -->
 >       <string name="channel_tips" translatable="false">boxDevelop</string>
->               
+>                   
 >   </resources>
 >   ```
 >
@@ -3188,19 +3188,19 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >         id 'org.jetbrains.kotlin.jvm'
 >         id 'maven-publish'
 >     }
->         
+>                 
 >     java {
 >         sourceCompatibility = JavaVersion.VERSION_1_7
 >         targetCompatibility = JavaVersion.VERSION_1_7
 >     }
->         
+>                 
 >     dependencies {
 >         implementation gradleApi()
 >     }
->         
+>                 
 >     group 'com.example.plugin'
 >     version '1.0.5'
->         
+>                 
 >     publishing {
 >         publications {
 >             myPlugin(MavenPublication) {
@@ -3324,4 +3324,49 @@ build.gradle是Gradle默认的构建脚本文件，执行Gradle命令时，会�
 >   还有一种是属性设置，属性设置的方式每次都是新的混淆文件列表，以前的会被清空。
 
 ##### 11.3.13 dimension
+
+> 有时候，我们想基于不同的标准来构建App，比如免费版还是收费版，x86版还是arm版等。在不考虑BuildType的情况下，这里有4个组合；x86免费、x86收费、arm免费、arm收费版。对于这种情况，我们有两种方式来构建，第一种通俗的用法，就是配置4个ProductFlavor，分别是x86free、x86paid、armfree、armpaid，然后针对这4个ProductFlavor配置，满足我们的需求即可。这种方式比较通俗易懂，但比较冗余，比如free是可以抽象出来的，可以通过多维度控制。
+>
+> dimension是ProductFlavor的一个属性，接受一个字符串，作为ProductFlavor的维度。可以理解为是对ProductFlavor的分组，比如free和paid可以认为是属于版本（version），而x86和arm属于架构，这样就分成了两组。
+>
+> - build.gradle
+>
+>   ```groovy
+>   // 先定义dimensions
+>   // 最后生成的variant会被如下几个ProductFlavor对象配置
+>   // 1. android里的defaultConfig配置，也是一个ProductFlavor
+>   // 2. abi维度的ProductFlavor，被dimension配置标记为abi的ProductFlavor
+>   // 3. version维度的ProductFlavor，被dimension配置标记为version的ProductFlavor
+>   // 维度的优先级非常重要，因为高优先级的flavor会替换掉低优先级的资源、代码、配置等。
+>   // 这里优先级为abi > version > defaultConfig
+>   flavorDimensions "abi", "version"
+>   
+>   productFlavors {
+>       free {
+>           dimension 'version'
+>       }
+>       paid {
+>           dimension 'version'
+>       }
+>       x86 {
+>           dimension 'abi'
+>       }
+>       arm {
+>           dimension 'abi'
+>       }
+>   }
+>   ```
+>
+>   这样gradle就会根据abi和version的组合，帮我们生成一下variant
+>
+>   1. ArmFreeDebug
+>   2. ArmFreeRelease
+>   3. ArmPaidDebug
+>   4. ArmPaidRelease
+>   5. x86FreeDebug
+>   6. x86FreeRelease
+>   7. x86PaidDebug
+>   8. x86PaidRelease
+
+#### 11.4 提高多渠道构建的效率
 
