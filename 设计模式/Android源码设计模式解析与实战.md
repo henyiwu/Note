@@ -279,3 +279,124 @@
       }
   }
   ```
+
+  以上方式通过setImageCache()方法注入不同的缓存实现，这样不仅能够使ImageLoader更简单、健壮，也使得ImageLoader的可扩展性、灵活性更高。
+
+  这样就符合开闭原则，使用抽象解决耦合问题。
+
+### 1.3 构建扩展性更好的系统 —— 里氏替换原则
+
+> 定义：所有引用基类的地方都能够透明地使用子类的对象。
+
+面向对象语言的三大特性：封装、多态、继承，里氏替换原则就是依赖于继承、多态。
+
+- android中的window
+
+  ```java
+  public class Window {
+    	public void show(View child) {
+        	child.draw();
+      }
+  }
+  
+  // 建立试图抽象，测量视图的宽高为公共代码，绘制实现交给具体子类
+  public abstract class View {
+    	public abstract void draw();
+    	public void measure(int width, int height) {
+        	// 测量视图大小
+      }
+  }
+  
+  // 按钮类具体实现
+  public class Button extends View {
+    	public void draw() {
+        	// 绘制按钮
+      }
+  }
+  
+  // TextView实现
+  public class TextView extends View {
+    	public void draw() {
+        	// 绘制文本
+      }
+  }
+  ```
+
+  window依赖于view，而view定义了一个视图抽象，measure是这个抽象类的动作，通过show方法可以代入各种各样的view，这样就体现了里氏替换原则。
+
+- 继承的优缺点
+
+  优点：
+
+  
+
+  1. 代码重用，减少创建类的成本，每个子类都有父类的方法和属性。
+  2. 子类与父类基本相似，但又与父类有所区别。
+  3. 提高代码的可扩展性。
+
+  缺点：
+
+  1. 继承是入侵性的，只要继承了就必须拥有父类的属性和方法。
+  2. 可能造成子类代码冗余、灵活性降低，因为子类必须拥有父类的属性和方法。
+
+### 1.4 让项目拥有变化的能力 —— 依赖倒置原则
+
+> 定义：
+>
+> 1. 高层模块不应该依赖于低层模块，两者都应该依赖于抽象。
+> 2. 抽象不应该依赖于细节。
+> 3. 细节应该依赖抽象。
+
+- 例如
+
+  ```java
+  public class ImageLoader {
+    
+    	// 这里不应该依赖于实现类，而是依赖于接口，这样当实现类扩展时，不用修改ImageLoader的代码
+    	ImageCache imageCache = new MemoryCache();
+    
+   		public void setImageCache(ImageCache cache) {
+        	mImageCache = cache;
+      }
+    
+  		public void displayImage(String imageUrl, ImageView imageView) {
+        	Bitmap bitmap = mImageCache.get(imageUrl)
+          if(bitmap != null) {
+            	imageView.setImageView(bitmap)
+              return ;
+          }
+        // 没图片缓存，去网络下载
+      }
+  }
+  ```
+
+### 1.5 系统有更高的灵活性 —— 接口隔离原则
+
+> 定义：客户端不应该依赖于他不需要的接口
+
+- 例如
+
+  有一个接口，包含衣食住行四个action，就不如把衣食住行拆分成4个接口，这样更加灵活。
+
+### 1.6 更好的可扩展性 —— 迪米特原则
+
+> 定义：一个对象应该对其他对象有最少的了解。
+
+- 例如
+
+  故事背景：租客要租房
+
+  有三个类：租客、中介、房东
+
+  租客不应该依赖房东，而是依赖中介，中介依赖房东，让租客做到对房东这个对象的最少了解。
+
+## 第二章 应用最广的模式 —— 单例模式
+
+## 第三章 自由扩展你的项目 —— Builder模式
+
+> 安卓中的应用：AlertDialog
+
+## 第十四章 解决问题的"第三者" —— 迭代器模式
+
+> 安卓中的应用：SqliteLite数据库使用游标查询数据
+
