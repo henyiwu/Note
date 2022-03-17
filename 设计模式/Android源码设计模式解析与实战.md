@@ -396,6 +396,255 @@
 
 > 安卓中的应用：AlertDialog
 
+## 第五章 应用最广泛的模式 —— 工厂方法模式
+
+- demo
+
+  ```java
+  public class Main {
+      public static void main(String[] args) {
+          Factory factory = new ConcreteFactory();
+          Product product = factory.createProduct();
+          product.method();
+      }
+  }
+  
+  abstract class Product {
+      public abstract void method();
+  }
+  
+  class ConcreteProductA extends Product {
+  
+      @Override
+      public void method() {
+          System.out.println("具体产品a");
+      }
+  }
+  
+  class ConcreteProductB extends Product {
+  
+      @Override
+      public void method() {
+          System.out.println("具体产品b");
+      }
+  }
+  
+  abstract class Factory {
+      abstract Product createProduct();
+  }
+  
+  class ConcreteFactory extends Factory {
+  
+      @Override
+      Product createProduct() {
+          return new ConcreteProductA();
+      }
+  }
+  ```
+
+  1. 抽象工厂
+  2. 具体工厂
+  3. 抽象产品
+  4. 具体产品
+
+- 使用反射
+
+  ```java
+  abstract class Factory {
+      public abstract <T extends Product> T createProduct(Class<T> clz);
+  }
+  
+  class ConcreteFactory extends Factory {
+  
+      @Override
+      public <T extends Product> T createProduct(Class<T> clz) {
+          Product product = null;
+          try {
+              product = (Product) Class.forName(clz.getName()).newInstance();
+          } catch (Exception e) {
+              e.printStackTrace();
+          }
+          return (T) product;
+      }
+  }
+  
+  public class Main {
+      public static void main(String[] args) {
+          Factory factory = new ConcreteFactory();
+          Product product = factory.createProduct(ConcreteProductA.class);
+          product.method();
+      }
+  }
+  ```
+
+  这样比较优雅，缺点是反射比较消耗性能
+
+## 第六章 创建型设计模式 —— 抽象工厂模式
+
+> 为创建一组相关或者互相依赖的对象提供一个接口，而不需要指定它们的具体类
+
+- 例子
+
+  ```java
+  abstract class AbstractProductA {
+      abstract void method();
+  }
+  
+  abstract class AbstractProductB {
+      abstract void method();
+  }
+  
+  class ConcreteProductA1 extends AbstractProductA {
+  
+      @Override
+      void method() {
+          System.out.println("具体产品a1的方法");
+      }
+  }
+  
+  class ConcreteProductA2 extends AbstractProductA {
+  
+      @Override
+      void method() {
+          System.out.println("具体产品a2的方法");
+      }
+  }
+  
+  class ConcreteProductB1 extends AbstractProductB {
+  
+      @Override
+      void method() {
+          System.out.println("具体产品b1的方法");
+      }
+  }
+  
+  class ConcreteProductB2 extends AbstractProductB {
+  
+      @Override
+      void method() {
+          System.out.println("具体产品b2的方法");
+      }
+  }
+  
+  abstract class AbstractFactory {
+      abstract AbstractProductA createProductA();
+      abstract AbstractProductB createProductB();
+  }
+  
+  class ConcreteFactory1 extends AbstractFactory {
+  
+      @Override
+      AbstractProductA createProductA() {
+          return new ConcreteProductA1();
+      }
+  
+      @Override
+      AbstractProductB createProductB() {
+          return new ConcreteProductB1();
+      }
+  }
+  
+  class ConcreteFactory2 extends AbstractFactory {
+  
+      @Override
+      AbstractProductA createProductA() {
+          return new ConcreteProductA2();
+      }
+  
+      @Override
+      AbstractProductB createProductB() {
+          return new ConcreteProductB2();
+      }
+  }
+  ```
+
+## 第七章 时势造英雄 —— 策略模式
+
+- 安卓中的应用
+
+  ```java
+  abstract public class BaseInterpolator implements Interpolator {
+      private @Config int mChangingConfiguration;
+  
+      public @Config int getChangingConfiguration() {
+          return mChangingConfiguration;
+      }
+  
+      void setChangingConfiguration(@Config int changingConfiguration) {
+          mChangingConfiguration = changingConfiguration;
+      }
+  }
+  
+  // 加速插值器
+  public class AccelerateInterpolator extends BaseInterpolator implements NativeInterpolator {
+      private final float mFactor;
+      private final double mDoubleFactor;
+  
+      public AccelerateInterpolator() {
+          mFactor = 1.0f;
+          mDoubleFactor = 2.0;
+      }
+  
+      public AccelerateInterpolator(float factor) {
+          mFactor = factor;
+          mDoubleFactor = 2 * mFactor;
+      }
+  
+      public AccelerateInterpolator(Context context, AttributeSet attrs) {
+          this(context.getResources(), context.getTheme(), attrs);
+      }
+  
+      public AccelerateInterpolator(Resources res, Theme theme, AttributeSet attrs) {
+          TypedArray a;
+          if (theme != null) {
+              a = theme.obtainStyledAttributes(attrs, R.styleable.AccelerateInterpolator, 0, 0);
+          } else {
+              a = res.obtainAttributes(attrs, R.styleable.AccelerateInterpolator);
+          }
+  
+          mFactor = a.getFloat(R.styleable.AccelerateInterpolator_factor, 1.0f);
+          mDoubleFactor = 2 * mFactor;
+          setChangingConfiguration(a.getChangingConfigurations());
+          a.recycle();
+      }
+  
+      public float getInterpolation(float input) {
+          if (mFactor == 1.0f) {
+              return input * input;
+          } else {
+              return (float)Math.pow(input, mDoubleFactor);
+          }
+      }
+  
+      /** @hide */
+      @Override
+      public long createNativeInterpolator() {
+          return NativeInterpolatorFactory.createAccelerateInterpolator(mFactor);
+      }
+  }
+  
+  // 线性插值器
+  public class LinearInterpolator extends BaseInterpolator implements NativeInterpolator {
+  
+      public LinearInterpolator() {
+      }
+  
+      public LinearInterpolator(Context context, AttributeSet attrs) {
+      }
+  
+      public float getInterpolation(float input) {
+          return input;
+      }
+  
+      @Override
+      public long createNativeInterpolator() {
+          return NativeInterpolatorFactory.createLinearInterpolator();
+      }
+  }
+  ```
+
+  view动画插值器就是一种策略模式，不同的策略在getInterpolation()中体现
+
 ## 第十四章 解决问题的"第三者" —— 迭代器模式
 
 > 安卓中的应用：SqliteLite数据库使用游标查询数据
