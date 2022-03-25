@@ -645,6 +645,60 @@
 
   view动画插值器就是一种策略模式，不同的策略在getInterpolation()中体现
 
+- 源代码
+
+- View.java
+
+  ````java
+  public class View implements Drawable.Callback, KeyEvent.Callback,
+          AccessibilityEventSource {
+  						boolean draw(Canvas canvas, ViewGroup parent, long drawingTime) {        
+          }
+  
+          final Animation a = getAnimation();
+          if (a != null) {
+              more = applyLegacyAnimation(parent, drawingTime, a, scalingRequired);
+              concatMatrix = a.willChangeTransformationMatrix();
+              if (concatMatrix) {
+                  mPrivateFlags3 |= PFLAG3_VIEW_IS_ANIMATING_TRANSFORM;
+              }
+              transformToApply = parent.getChildTransformation();
+          } else {
+            ...
+          }
+            ....
+  }
+  
+      private boolean applyLegacyAnimation(ViewGroup parent, long drawingTime,
+              Animation a, boolean scalingRequired) {
+          Transformation invalidationTransform;
+          final Transformation t = parent.getChildTransformation();
+          boolean more = a.getTransformation(drawingTime, t, 1f);
+        	...
+      }
+  ````
+
+- Animation.java
+
+  ```java
+  public abstract class Animation implements Cloneable {
+      public boolean getTransformation(long currentTime, Transformation outTransformation,
+              float scale) {
+          mScaleFactor = scale;
+          return getTransformation(currentTime, outTransformation);
+      }
+    
+      public boolean getTransformation(long currentTime, Transformation outTransformation) {
+          if ((normalizedTime >= 0.0f || mFillBefore) && (normalizedTime <= 1.0f || mFillAfter)) {
+  						......	
+            	// mInterpolator是我们通过Animation.setInterpolator()设置的策略
+              final float interpolatedTime = mInterpolator.getInterpolation(normalizedTime);
+              applyTransformation(interpolatedTime, outTransformation);
+          }
+      }
+  }
+  ```
+
 ## 第十四章 解决问题的"第三者" —— 迭代器模式
 
 > 安卓中的应用：SqliteLite数据库使用游标查询数据
