@@ -642,3 +642,48 @@
 
   DOWN事件中getParent().requestDisallowInterceptTouchEvent(true)干预了父元素（外布局）的事件分发过程，后续的MOVE事件会传递到该ListView，superDispatchMoveEvent()用于判断ListView是否滑动到顶/底部，是则getParent().requestDisallowInterceptTouchEvent(false)，父布局能够正常接收事件。
 
+### 5.   Q&A
+
+#### 5.1 为什么手指按下按钮，然后移动到按钮区域外，点击时间就不触发了？
+
+- View#onTouchEvent(MotionEvent event)
+
+  ```java
+      public boolean onTouchEvent(MotionEvent event) {
+          if (clickable || (viewFlags & TOOLTIP) == TOOLTIP) {
+              switch (action) {
+                  case MotionEvent.ACTION_UP:
+                      boolean prepressed = (mPrivateFlags & PFLAG_PREPRESSED) != 0;
+                  		// press状态为false，这里进不去
+                      if ((mPrivateFlags & PFLAG_PRESSED) != 0 || prepressed) {
+                          if (!mHasPerformedLongPress && !mIgnoreNextUpEvent) {
+                              removeLongPressCallback();
+                              if (!focusTaken) {
+                                	// 触发点击事件
+                                  if (mPerformClick == null) {
+                                      mPerformClick = new PerformClick();
+                                  }
+                                  if (!post(mPerformClick)) {
+                                      performClickInternal();
+                                  }
+                              }
+                          }
+                      break;
+                  case MotionEvent.ACTION_MOVE:
+                  		// 触摸事件不在view区域内，设置press状态为false
+                      if (!pointInView(x, y, touchSlop)) {
+                          removeTapCallback();
+                          removeLongPressCallback();
+                          if ((mPrivateFlags & PFLAG_PRESSED) != 0) {
+                              setPressed(false);
+                          }
+                          mPrivateFlags3 &= ~PFLAG3_FINGER_DOWN;
+                      }
+                      break;
+              }
+              return true;
+          }
+          return false;
+      }
+  ```
+
