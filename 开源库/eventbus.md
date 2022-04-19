@@ -6,6 +6,11 @@
 
 ### Register
 
+> register主要步骤：
+>
+> 1. 构建两个map，subscriptionsByEventType和typesBySubscriber，subscriptionsByEventType是以参数类型为key，subscriber为value的map，typesBySubscriber是以要注册类的对象为key，类中订阅事件的方法参数类型为集合为value的键值对。
+> 2. 目标类的条件：有subscribe注解、只有一个参数、public修饰、非static修饰
+
 - Eventbus#register()
 
   ```java
@@ -53,6 +58,7 @@
               return subscriberMethods;
           }
       }
+  ```
 
 - SubscriberMethodFinder#findUsingInfo(Class<?> subscriberClass)
 
@@ -94,11 +100,12 @@
   
       // ->> 返回到findSubscriberMethods() 方法中
   }
+  ```
 
 - SubscriberMethodFinder#findUsingReflectionSingleClass(FindState findState)
 
   ```java
-  // 方法不能是abstract、status
+  // 方法不能是abstract、static
   private static final int MODIFIERS_IGNORE = Modifier.ABSTRACT | Modifier.STATIC | BRIDGE | SYNTHETIC;
   
   private void findUsingReflectionInSingleClass(FindState findState) {
@@ -122,7 +129,7 @@
                   Subscribe subscribeAnnotation = method.getAnnotation(Subscribe.class);
                   // 如果该方法的Subscribe存在
                   if (subscribeAnnotation != null) {
-                      // 获取该方法第一个参数类型，也就是订阅的事件类型
+                      // 获取该方法第一个参数类型，也就是订阅的事件类型，例如：boolean、class android.os.Bundle
                       Class<?> eventType = parameterTypes[0];
                      // checkAdd()方法用来判断FindState中是否已经添加过将该事件类型为key的键值对，没添加过则返回					   // true
                      if (findState.checkAdd(method, eventType)) {
@@ -146,58 +153,69 @@
   }
   ```
 
-- SubscriberRegistery#register(Object subscriber, SubscriberMethod subscriberMethod)
+#### Eventbus#subscribe
+
+- Eventbus#subscribe(Object subscriber, SubscriberMethod subscriberMethod)
 
   ```java
-      private void subscribe(Object subscriber, SubscriberMethod subscriberMethod) {
-          Class<?> eventType = subscriberMethod.eventType;
-          Subscription newSubscription = new Subscription(subscriber, subscriberMethod);
-          CopyOnWriteArrayList<Subscription> subscriptions = subscriptionsByEventType.get(eventType);
-          if (subscriptions == null) {
-              subscriptions = new CopyOnWriteArrayList<>();
-              // 填充subscriptionsByEventType，该数据结构可以根据时间类型，获取所有订阅方法信息的集合
-              subscriptionsByEventType.put(eventType, subscriptions);
-          } else {
-              if (subscriptions.contains(newSubscription)) {
-                  throw new EventBusException("Subscriber " + subscriber.getClass() + " already registered to event "
-                          + eventType);
-              }
-          }
-  
-          int size = subscriptions.size();
-          for (int i = 0; i <= size; i++) {
-              if (i == size || subscriberMethod.priority > subscriptions.get(i).subscriberMethod.priority) {
-                  subscriptions.add(i, newSubscription);
-                  break;
-              }
-          }
-  
-          List<Class<?>> subscribedEvents = typesBySubscriber.get(subscriber);
-          if (subscribedEvents == null) {
-              subscribedEvents = new ArrayList<>();
-              // 填充typesBySubscriber，该数据结构可以根据注册类获得这个类上的所有订阅方法
-              typesBySubscriber.put(subscriber, subscribedEvents);
-          }
-          subscribedEvents.add(eventType);
-  
-          if (subscriberMethod.sticky) {
-              if (eventInheritance) {
-                  // Existing sticky events of all subclasses of eventType have to be considered.
-                  // Note: Iterating over all events may be inefficient with lots of sticky events,
-                  // thus data structure should be changed to allow a more efficient lookup
-                  // (e.g. an additional map storing sub classes of super classes: Class -> List<Class>).
-                  Set<Map.Entry<Class<?>, Object>> entries = stickyEvents.entrySet();
-                  for (Map.Entry<Class<?>, Object> entry : entries) {
-                      Class<?> candidateEventType = entry.getKey();
-                      if (eventType.isAssignableFrom(candidateEventType)) {
-                          Object stickyEvent = entry.getValue();
-                          checkPostStickyEventToSubscription(newSubscription, stickyEvent);
-                      }
-                  }
-              } else {
-                  Object stickyEvent = stickyEvents.get(eventType);
-                  checkPostStickyEventToSubscription(newSubscription, stickyEvent);
-              }
+  private void subscribe(Object subscriber, SubscriberMethod subscriberMethod) {
+      // 获取订阅方法的事件类型
+      Class<?> eventType = subscriberMethod.eventType;
+      // 将订阅方法的封装类、再进行封装
+      Subscription newSubscription = new Subscription(subscriber, subscriberMethod);
+      // subscriptionsByEventType是hashmap, 以事件类型为key, Subscription集合为value
+      // 先查找subscriptionsByEventType是否存在以当前事件类型为key的值
+      CopyOnWriteArrayList<Subscription> subscriptions = subscriptionsByEventType.get(eventType);
+      if (subscriptions == null) {
+          subscriptions = new CopyOnWriteArrayList<>();
+          // 填充subscriptionsByEventType，该数据结构可以根据事件类型，获取所有订阅方法信息的集合
+          subscriptionsByEventType.put(eventType, subscriptions);
+      } else {
+          if (subscriptions.contains(newSubscription)) {
+              throw new EventBusException("Subscriber " + subscriber.getClass() + " already registered to event "
+                      + eventType);
           }
       }
+  
+      int size = subscriptions.size();
+      for (int i = 0; i <= size; i++) {
+          if (i == size || subscriberMethod.priority > subscriptions.get(i).subscriberMethod.priority) {
+              subscriptions.add(i, newSubscription);
+              break;
+          }
+      }
+  
+      // typesBySubscriber也是一个HashMap，保存了以当前要注册类的对象为key，注册类中订阅事件的方法的参数类型的集合为value的键值对
+      // 和上面一样，根据key先判断，是否已经存储过了，如果已经存储过了，直接取出订注册类中订阅事件的方法的参数类型的集合
+      List<Class<?>> subscribedEvents = typesBySubscriber.get(subscriber);
+      if (subscribedEvents == null) {
+          subscribedEvents = new ArrayList<>();
+          // 填充typesBySubscriber，该数据结构可以根据注册类获得这个类上的所有订阅方法
+          typesBySubscriber.put(subscriber, subscribedEvents);
+      }
+      subscribedEvents.add(eventType);
+  
+    	// 是否支持粘性事件
+      if (subscriberMethod.sticky) {
+          if (eventInheritance) {
+              // Existing sticky events of all subclasses of eventType have to be considered.
+              // Note: Iterating over all events may be inefficient with lots of sticky events,
+              // thus data structure should be changed to allow a more efficient lookup
+              // (e.g. an additional map storing sub classes of super classes: Class -> List<Class>).
+              Set<Map.Entry<Class<?>, Object>> entries = stickyEvents.entrySet();
+              for (Map.Entry<Class<?>, Object> entry : entries) {
+                  Class<?> candidateEventType = entry.getKey();
+                  if (eventType.isAssignableFrom(candidateEventType)) {
+                      Object stickyEvent = entry.getValue();
+                      checkPostStickyEventToSubscription(newSubscription, stickyEvent);
+                  }
+              }
+          } else {
+              Object stickyEvent = stickyEvents.get(eventType);
+              checkPostStickyEventToSubscription(newSubscription, stickyEvent);
+          }
+      }
+  }
   ```
+
+  
