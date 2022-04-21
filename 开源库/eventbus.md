@@ -274,3 +274,161 @@
   }
   ```
 
+### post
+
+- post
+
+  ```java
+  private final ThreadLocal<PostingThreadState> currentPostingThreadState = new ThreadLocal<PostingThreadState>() {
+          @Override
+          protected PostingThreadState initialValue() {
+              return new PostingThreadState();
+          }
+      };
+  
+  public void post(Object event) {
+    	// postingState是ThreadLocal
+    	// 把发送的事件保存在postingState里
+      PostingThreadState postingState = currentPostingThreadState.get();
+      List<Object> eventQueue = postingState.eventQueue;
+      eventQueue.add(event);
+  
+    	// 判断该事件是否正在发送中
+      if (!postingState.isPosting) {
+          postingState.isMainThread = Looper.getMainLooper() == Looper.myLooper();
+          postingState.isPosting = true;
+          if (postingState.canceled) {
+              throw new EventBusException("Internal error. Abort state was not reset");
+          }
+          try {
+            	// 遍历postingState，直到事件发送完成
+              while (!eventQueue.isEmpty()) {
+                  postSingleEvent(eventQueue.remove(0), postingState);
+              }
+          } finally {
+              postingState.isPosting = false;
+              postingState.isMainThread = false;
+          }
+      }
+  }
+  ```
+
+- postSingleEvent(Object event, PostingThreadState postingState) throws Error 
+
+  ```java
+  private void postSingleEvent(Object event, PostingThreadState postingState) throws Error {
+      Class<?> eventClass = event.getClass();
+      boolean subscriptionFound = false;
+    	// 判断event是否有弗雷
+      if (eventInheritance) {
+        	// lookupAllEventTypes() 拿到该事件的所有父类事件类型
+          List<Class<?>> eventTypes = lookupAllEventTypes(eventClass);
+          int countTypes = eventTypes.size();
+        	// 遍历事件类型
+          for (int h = 0; h < countTypes; h++) {
+              Class<?> clazz = eventTypes.get(h);
+              subscriptionFound |= postSingleEventForEventType(event, postingState, clazz);
+          }
+      } else {
+          subscriptionFound = postSingleEventForEventType(event, postingState, eventClass);
+      }
+      if (!subscriptionFound) {
+          if (logNoSubscriberMessages) {
+              Log.d(TAG, "No subscribers registered for event " + eventClass);
+          }
+          if (sendNoSubscriberEvent && eventClass != NoSubscriberEvent.class &&
+                  eventClass != SubscriberExceptionEvent.class) {
+            	// 如果没有订阅事件，发送NoSubscriberEvent
+              post(new NoSubscriberEvent(this, event));
+          }
+      }
+  }
+  ```
+
+- postSingleEventForEventType(Object event, PostingThreadState postingState, Class<?> eventClass) 
+
+  ```java
+  private boolean postSingleEventForEventType(Object event, PostingThreadState postingState, Class<?> eventClass) {
+      CopyOnWriteArrayList<Subscription> subscriptions;
+      synchronized (this) {
+        	// 根据eventType拿到订阅方法的集合
+          subscriptions = subscriptionsByEventType.get(eventClass);
+      }
+      if (subscriptions != null && !subscriptions.isEmpty()) {
+          for (Subscription subscription : subscriptions) {
+              postingState.event = event;
+              postingState.subscription = subscription;
+              boolean aborted = false;
+              try {
+                	// 把事件发送给这个方法
+                  postToSubscription(subscription, event, postingState.isMainThread);
+                  aborted = postingState.canceled;
+              } finally {
+                  postingState.event = null;
+                  postingState.subscription = null;
+                  postingState.canceled = false;
+              }
+              if (aborted) {
+                  break;
+              }
+          }
+          return true;
+      }
+      return false;
+  }
+  ```
+
+- postToSubscription(Subscription subscription, Object event, boolean isMainThread)
+
+  ```java
+  private void postToSubscription(Subscription subscription, Object event, boolean isMainThread) {
+      switch (subscription.subscriberMethod.threadMode) {
+          // 在哪个线程发送事件，就在哪个线程接收事件
+          case POSTING:
+              invokeSubscriber(subscription, event);
+              break;
+          // 在主线程接收事件
+          case MAIN:
+          		// 如果当前是主线程，直接发送，否则通过主线程的handler把事件转到主线程发送
+              if (isMainThread) {
+                  invokeSubscriber(subscription, event);
+              } else {
+                  mainThreadPoster.enqueue(subscription, event);
+              }
+              break;
+          // 在io线程接收事件
+          case BACKGROUND:
+          		// 如果当前是主线程，通过eventbus的线程池发送事件
+              if (isMainThread) {
+                  backgroundPoster.enqueue(subscription, event);
+              } else {
+                	// 如果当前不是主线程，直接发送事件 
+                  invokeSubscriber(subscription, event);
+              }
+              break;
+          // 无论在哪个线程，都用线程池执行
+          case ASYNC:
+              asyncPoster.enqueue(subscription, event);
+              break;
+          default:
+              throw new IllegalStateException("Unknown thread mode: " + subscription.subscriberMethod.threadMode);
+      }
+  }
+  ```
+
+- invokeSubscriber(Subscription subscription, Object event) 
+
+  ```java
+  // 不论是ThreadMode BACKGROUND、MAIN、POSTING、ASYNC
+  // 最终都通过这个方法调用
+  void invokeSubscriber(Subscription subscription, Object event) {
+      try {
+        	// 反射调用方法
+          subscription.subscriberMethod.method.invoke(subscription.subscriber, event);
+      } catch (InvocationTargetException e) {
+          handleSubscriberException(subscription, event, e.getCause());
+      } catch (IllegalAccessException e) {
+          throw new IllegalStateException("Unexpected exception", e);
+      }
+  }
+  ```
