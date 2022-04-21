@@ -8,12 +8,19 @@
 
 > register主要步骤：
 >
-> 1. 构建两个map，subscriptionsByEventType和typesBySubscriber，subscriptionsByEventType是以参数类型为key，subscriber为value的map，typesBySubscriber是以要注册类的对象为key，类中订阅事件的方法参数类型为集合为value的键值对。
+> 1. 构建两个map，subscriptionsByEventType和typesBySubscriber，subscriptionsByEventType是以参数类型为key，subscriber为value的map，typesBySubscriber是以要注册类的对象为key，类中订阅事件的方法参数类型为集合为value的键值对。（EventType是被Subscribe修饰的函数唯一的入参的类名）
 > 2. 目标类的条件：有subscribe注解、只有一个参数、public修饰、非static修饰
 
 - Eventbus#register()
 
   ```java
+  // key : eventType（订阅方法唯一的参数，是个类）
+  // value ： 订阅该事件的方法集合
+  private final Map<Class<?>, CopyOnWriteArrayList<Subscription>> subscriptionsByEventType;
+  // key : 类
+  // value : 该订阅类的参数类型
+  private final Map<Object, List<Class<?>>> typesBySubscriber;
+  
   private final SubscriberRegistry subscribers = new SubscriberRegistry(this);
       public void register(Object subscriber) {
           Class<?> subscriberClass = subscriber.getClass();
@@ -218,4 +225,52 @@
   }
   ```
 
-  
+
+### unregister
+
+> 使用：EventBus.getDefault().unregister(this);
+
+- unregister
+
+  ```java
+  public synchronized void unregister(Object subscriber) {
+      // 通过类，取出该订阅类的eventType集合
+      List<Class<?>> subscribedTypes = typesBySubscriber.get(subscriber);
+      if (subscribedTypes != null) {
+          for (Class<?> eventType : subscribedTypes) {
+              unsubscribeByEventType(subscriber, eventType);
+          }
+          // hashmap.remove(key)
+          // 删掉这个key
+          typesBySubscriber.remove(subscriber);
+      } else {
+          Log.w(TAG, "Subscriber to unregister was not registered before: " + subscriber.getClass());
+      }
+  }
+  ```
+
+- unsubscribeByEventType(Object subscribe, Class<?> eventType)
+
+  ```java
+  private void unsubscribeByEventType(Object subscriber, Class<?> eventType) {
+    	// 拿到这个eventType的所有订阅方法，并遍历
+    	// 注意这里拿到的订阅方法有可能是其他类的，不一定是subscriber这个类里的
+    	// 所以下方删除时需要判断这个订阅方法是不是当前类的
+      List<Subscription> subscriptions = subscriptionsByEventType.get(eventType);
+      if (subscriptions != null) {
+          int size = subscriptions.size();
+          for (int i = 0; i < size; i++) {
+            	// subscription中保存了订阅类的信息
+              Subscription subscription = subscriptions.get(i);
+            	// 判断订阅方法是不是要unregister的class里的，是的话删除
+              if (subscription.subscriber == subscriber) {
+                  subscription.active = false;
+                  subscriptions.remove(i);
+                  i--;
+                  size--;
+              }
+          }
+      }
+  }
+  ```
+
