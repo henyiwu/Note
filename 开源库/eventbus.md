@@ -225,7 +225,6 @@
   }
   ```
 
-
 ### unregister
 
 > 使用：EventBus.getDefault().unregister(this);
@@ -432,3 +431,108 @@
       }
   }
   ```
+
+### Sticky
+
+> 原理：调用postSticky时，把事件存储起来（map<类，eventType>），
+
+- 使用
+
+  ```java
+  // 发布事件
+  EventBus.getDefault().postSticky(new Object());
+  
+  // 订阅事件
+  @Subscribe(sticky = true)
+  public void testEventBus(Object obj){
+  
+      ...
+  }
+  ```
+
+- postSticky
+
+  ```java
+  private final Map<Class<?>, Object> stickyEvents;
+  
+  public void postSticky(Object event) {
+      synchronized (stickyEvents) {
+        	// 把事件存储在stickyEvents
+        	// 例:
+        	// key : class com.gzik.pandora.logic.event.MineLiveEvent
+        	// value : MineLiveEvent(infoChange=true)
+          stickyEvents.put(event.getClass(), event);
+      }
+      // 普通的post，流程上面分析过
+      post(event);
+  }
+  ```
+
+- subscribe(Object subscriber, SubscriberMethod subscriberMethod)
+
+  ```java
+      private void subscribe(Object subscriber, SubscriberMethod subscriberMethod) {
+  			...
+        // 如果事件支持粘性事件
+        if (subscriberMethod.sticky) {
+              if (eventInheritance) {
+                	// 遍历上面提到的stickyEvents，取出粘性事件
+                  Set<Map.Entry<Class<?>, Object>> entries = stickyEvents.entrySet();
+                  for (Map.Entry<Class<?>, Object> entry : entries) {
+                      Class<?> candidateEventType = entry.getKey();
+                    	// 订阅方法的eventType和粘性事件的eventType匹配
+                      if (eventType.isAssignableFrom(candidateEventType)) {
+                          Object stickyEvent = entry.getValue();
+                          checkPostStickyEventToSubscription(newSubscription, stickyEvent);
+                      }
+                  }
+              } else {
+                  Object stickyEvent = stickyEvents.get(eventType);
+                  checkPostStickyEventToSubscription(newSubscription, stickyEvent);
+              }
+          }
+      }
+  ```
+  
+- checkPostStickyEventToSubscription
+
+  ```java
+  private void checkPostStickyEventToSubscription(Subscription newSubscription, Object stickyEvent) {
+      if (stickyEvent != null) {
+          postToSubscription(newSubscription, stickyEvent, Looper.getMainLooper() == Looper.myLooper());
+      }
+  }
+  ```
+
+- postToSubscription(Subscription subscription, Object event, boolean isMainThread)
+
+  ```java
+  private void postToSubscription(Subscription subscription, Object event, boolean isMainThread) {
+      switch (subscription.subscriberMethod.threadMode) {
+          case POSTING:
+              invokeSubscriber(subscription, event);
+              break;
+          case MAIN:
+              if (isMainThread) {
+                  invokeSubscriber(subscription, event);
+              } else {
+                  mainThreadPoster.enqueue(subscription, event);
+              }
+              break;
+          case BACKGROUND:
+              if (isMainThread) {
+                  backgroundPoster.enqueue(subscription, event);
+              } else {
+                  invokeSubscriber(subscription, event);
+              }
+              break;
+          case ASYNC:
+              asyncPoster.enqueue(subscription, event);
+              break;
+          default:
+              throw new IllegalStateException("Unknown thread mode: " + subscription.subscriberMethod.threadMode);
+      }
+  }
+  ```
+
+  
