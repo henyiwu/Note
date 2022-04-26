@@ -866,6 +866,8 @@
 > OkHttp支持配置自己的Dns解析服务器
 >
 > 构建OkHttpClient时，调用接口获取host和对应的ip，在自定义的Dns（接口）根据host获取对应的ip，如果没有获取到则调用系统默认的dns实现方式
+>
+> 如果一个host对应多个ip，则ping各个id，选择最快的ip访问
 
 - Dns
 
