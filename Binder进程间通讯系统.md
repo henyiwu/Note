@@ -192,5 +192,320 @@
     1. 节点rb_node_desc：**key : 句柄值，value : binder引用对象**
     2. 节点rb_node_node：**key : binder实体对象地址，value : 对应的binder引用对象**
 
-    
 
+#### binder_buffer
+
+> /drivers/staging/android/binder.c#binder_buffer
+
+- binder.c
+
+  ```c
+  struct binder_buffer {
+      // binder驱动程序为进程分配内核缓冲区列表，entry是列表的一个节点
+  	struct list_head entry;
+      /**
+       * binder驱动进程用两棵红黑树表示正在使用的内核缓冲区以及空闲的内和缓冲区
+       * 如果一个内核缓冲区是空闲的，即它的成员变量free的值等于1，
+       * 且成员变量rb_node就是空闲缓冲区红黑树的一个节点，
+       * 否则rb_node是正在使用内核缓冲区红黑树的一个节点
+       */
+  	struct rb_node rb_node;
+  	unsigned free:1;
+  	unsigned allow_user_free:1;
+  	unsigned async_transaction:1; // 是否是异步任务
+  	unsigned debug_id:29;
+      
+      // transaction和target_node内核缓冲区正在交给哪一个事务以及哪一个binder实体对象使用
+      // 每一个事务都关联一个目标Binder实体对象
+      // binder驱动程序将事务保存在一个内核缓冲区中，然后交给binder实体对象处理，
+      // 然后目标实体对象再将该内存缓冲区中的内容交给相应的service组件处理，service组件处理完该事务之后，
+      // 如果发现传递给它的内核缓冲区的成员变量allow_user_free的值为1，则service组件请求binder驱动释放该内核缓冲区
+  	struct binder_transaction *transaction;
+  	struct binder_node *target_node;
+      
+  	size_t data_size;
+  	size_t offsets_size;
+      // data：一块大小可变的数据缓冲区，保存真正的通信数据
+  	uint8_t data[0];
+  };
+  ```
+
+  结构体binder_buffer用来描述一个内核缓冲区，它是用来在进程间传递数据的，每一个使用binder进程通信机制的进程在binder驱动程序中都有一个内核缓冲区列表，用来表示binder驱动程序为它所分配的内核缓冲区，而成员变量entry正好是这个内核缓冲区列表的一个节点。
+
+  - 数据缓冲区data保存的数据分为两类
+    1. 普通数据
+    2. binder对象
+
+#### binder_proc
+
+> /drivers/staging/android/binder.c#binder_proc
+
+- binder.c
+
+  ```c
+  struct binder_proc {
+      struct hlist_node proc_node; // 全局hash列表中的节点
+      // 每个进行binder通信的进程，都有一个binder线程池，由binder驱动维护，threads是红黑树根节点
+      // 它以线程id作为关键字组织一个进程的binder线程池。
+      // 进程可以调用ioctl将线程注册到binder驱动中，同时，当进程没有足够多的空闲线程时，binder驱动也可以主动
+      // 要求进程注册更多的线程到binder线程池中，最大数量为max_threads
+      struct rb_root threads;
+      struct rb_root nodes;
+      struct rb_root refs_by_desc;
+      struct rb_root refs_by_node;
+      int pid; // 进程组id
+      struct vm_area_struct *vma; // 用户空间地址
+      struct task_struct *tsk; // 任务控制块
+      struct files_struct *files; // 打开文件结构体数
+      struct hlist_node deferred_work_node;
+      int deferred_work;
+      void *buffer; // 内核空间地址
+      ptrdiff_t user_buffer_offset; // 用户空间与内核空间地址相差的一个固定的值
+      struct list_head buffers;
+      struct rb_root free_buffers; // 空闲小块内核缓冲区红黑树
+      struct rb_root allocated_buffers; // 正在使用的小块内核缓冲区红黑树
+      size_t free_async_space; // 当前可以用来保存异步事务数据的内核缓冲区大小
+      // **pages 固定的物理页面，成员变量pages是类型为struct page*的一个数组，数组中的每一个元素都指向一个物理页
+      struct page **pages; 
+      size_t buffer_size; // 内存缓冲区大小
+      uint32_t buffer_free;
+      // 当进程接收到一个进程间通信请求时，binder驱动程序将请求封装成一个工作项，
+      // 加入到进程待处理工作项队列中，即todo
+      struct list_head todo;
+      wait_queue_head_t wait; // binder线程池空闲线程队列
+      struct binder_stats stats;
+      struct list_head delivered_death;
+      int max_threads;
+      int requested_threads;
+      int requested_threads_started;
+      int ready_threads; // 当前进程空闲binder线程数
+      long default_priority;
+      struct dentry *debugfs_entry;
+  };
+  ```
+
+  结构体binder_proc用来描述一个正在使用binder进程间通信的进程。
+
+  当一个进程调用函数open来打开设备文件/dev/binder时，binder驱动就会为它创建一个binder_proc结构体，并且保存在一个全局的hash列表中，而成员变量proc_node就是hash列表的一个节点
+
+  进程打开设备文件/dev/binder之后，还必须调用函数mmap将它映射到进程的地址空间来，实际上是请求binder驱动程序为它分配一块内核缓冲区，以便做进程间传递数据。binder驱动程序为进程分配的内和缓冲区大小保存在成员变量buffer_size中
+
+- 运行中binder的通信进程，维护三棵红黑树
+
+  1. nodes
+
+     key：binder实体对象的成员变量ptr，value：binder实体对象
+
+  2. refs_by_desc
+
+     key：引用对象成员变量desc（句柄），value：引用对象
+
+  3. refs_by_node
+
+     key：应用对象成员变量node，value：引用对象
+
+  当进程不再使用binder进程间通信时，调用close关闭设备/dev/binder，这时候binder驱动就会释放之前为它分配的资源，例如释放结构体binder_proc、binder实体对象结构体binder_node以及binder_ref等。
+
+#### binder_thread
+
+> /drivers/staging/android/binder.c#binder_thread
+
+- binder.c
+
+  ```c
+  struct binder_thread {
+      struct binder_proc *proc; // -> 宿主进程
+      struct rb_node rb_node; // binder_proc#threads的一个节点
+      int pid; // 线程id
+      int looper; // 线程状态
+      struct binder_transaction *transaction_stack;
+      struct list_head todo;
+      uint32_t return_error; /* Write failed, return error code in read buf */
+      uint32_t return_error2; /* Write failed, return error code in read */
+          /* buffer. Used when sending a reply to a dead process that */
+          /* we are also waiting on */
+      wait_queue_head_t wait;
+      struct binder_stats stats;
+  };
+  ```
+
+  结构体binder_thread用来描述binder线程池中的一个线程
+
+  一个线程注册到binder驱动时，binder驱动会为它创建一个binder_thread结构体。
+
+#### binder_transaction
+
+> drivers/staging/android/binder.c#binder_transaction
+
+- binder.c
+
+  ```c
+  struct binder_transaction {
+      int debug_id;
+      struct binder_work work;
+      struct binder_thread *from; // 发起事务的线程
+      struct binder_transaction *from_parent;
+      struct binder_proc *to_proc; // 负责处理事务的进程
+      struct binder_thread *to_thread; // 负责处理事务的线程
+      struct binder_transaction *to_parent;
+      unsigned need_reply:1; // 区分事务是同步还是异步，同步事件需要对方答复，异步不需要
+      /* unsigned is_dead:1; */	/* not used at the moment */
+      struct binder_buffer *buffer; // -> binder驱动为该事务分配的一块内核缓冲区，其中保存进程间通信数据
+      unsigned int	code;
+      unsigned int	flags;
+      long	priority; // 源线程优先级
+      long	saved_priority;
+      uid_t	sender_euid; // 用户id
+  };
+  ```
+
+  结构体binder_transaction描述进程间通信过程，这个过程又称为一个事务。
+
+  当binder驱动为目标进程或目标线程创建一个事务时，就会将该事务的成员变量work设置为BINDER_WORK_TRANSACTION，并且将它添加到目标进程或者目标线程todo队列中等待处理。
+
+  以上介绍的都是在binder驱动内部使用的结构体
+
+  -----
+
+### Binder进程间通信库(Framework)
+
+> frameworks/base/include/binder/Binder.h
+>
+> Binder库中，Service组件和Client组件分别使用模板类BnInterface和BpInterface来描述，其中，前者称为Binder本地对象，后者称为Binder代理对象。Binder库中的Binder本地对象和Binder代理对象分别对应与Binder驱动程序中的Binder实体对象和Binder引用对象。
+
+- IInterface.h
+
+  ```c++
+  template<typename INTERFACE>
+  class BnInterface : public INTERFACE, public BBinder { // 本地对象
+  public:
+      virtual sp<IInterface>      queryLocalInterface(const String16& _descriptor);
+      virtual const String16&     getInterfaceDescriptor() const;
+  protected:
+      virtual IBinder*            onAsBinder();
+  };
+  
+  template<typename INTERFACE>
+  class BpInterface : public INTERFACE, public BpRefBase { // 代理对象
+  public:
+                                  BpInterface(const sp<IBinder>& remote);
+  protected:
+      virtual IBinder*            onAsBinder();
+  };
+  ```
+
+  开发service组件和client组件时，除了要定义service组件接口之外，还需要实现一个binder本地类对象和一个代理对象
+
+- BBinder
+
+  ```cpp
+  class BBinder : public IBinder
+  {
+  public:
+  	...
+      virtual status_t    transact(   uint32_t code,
+                                      const Parcel& data,
+                                      Parcel* reply,
+                                      uint32_t flags = 0);
+     	...
+  	virtual status_t    onTransact( uint32_t code,
+     	        	                  	const Parcel& data,
+            	 	                    Parcel* reply,
+            	                        uint32_t flags = 0);
+  };
+  ```
+
+  BnInterface和BpInterface都继承了BBinder，BBinder为binder本地对象提供了抽象的进程通信接口
+
+  - transcat
+
+    当一个Binder代理对象通过Binder驱动程序向一个Binder本地对象发出一个进程间通信的时候，Binder驱动程序会调用该Binder本地对象的成员函数transact来处理该请求。
+
+  - onTransact
+
+    onTransact是由BBinder的子类，即Binder本地对象来实现的，它负责分发与业务相关的进程间通信请求。实际上，与业务相关的进程间通信请求是由Binder本地对象的子类，即Service组件来实现的。
+
+- BpRefBase
+
+  BpInterface继承自BpRefBase，BpRefBase为代理对象提供了抽象的进程间通信接口
+
+  ```cpp
+  class BpRefBase : public virtual RefBase {
+  protected:
+                              BpRefBase(const sp<IBinder>& o);
+      virtual                 ~BpRefBase();
+      virtual void            onFirstRef();
+      virtual void            onLastStrongRef(const void* id);
+      virtual bool            onIncStrongAttempted(uint32_t flags, const void* id);
+      inline  IBinder*        remote()                { return mRemote; }
+      inline  IBinder*        remote() const          { return mRemote; }
+  private:
+                              BpRefBase(const BpRefBase& o);
+      BpRefBase&              operator=(const BpRefBase& o);
+      IBinder* const          mRemote; // -> BpBinder对象
+      RefBase::weakref_type*  mRefs;
+      volatile int32_t        mState;
+  };
+  ```
+
+- BpBinder
+
+  ```cpp
+  class BpBinder : public IBinder {
+  public:
+                          BpBinder(int32_t handle);
+      inline  int32_t     handle() const { return mHandle; }
+      // 向运行在server进程中的service组件发送进程间通信请求
+      // 把handle、通信数据发送给binder驱动程序
+      // binder通过驱动程序找到对应的binder引用对象
+      // 再找到binder实体对象，再找到service组件实体，最后将数据发送给service组件
+      virtual status_t    transact(   uint32_t code,
+                                      const Parcel& data,
+                                      Parcel* reply,
+                                      uint32_t flags = 0);
+      ...
+      const   int32_t             mHandle; // client组件的句柄值，与binder驱动程序的binder引用对象建立对应关系
+  }; // namespace android
+  ```
+
+- IPCThreadState.h
+
+  ```cpp
+  class IPCThreadState
+  {
+  public:
+      static  IPCThreadState*     self();
+  	...
+              status_t            transact(int32_t handle,
+                                           uint32_t code, const Parcel& data,
+                                           Parcel* reply, uint32_t flags);
+  	...
+              status_t            talkWithDriver(bool doReceive=true);
+  	...
+      const   sp<ProcessState>    mProcess; // -> ProcessState
+  }; // namespace android
+  ```
+
+  每一个binder线程，内部都有一个IPCThreadState对象，调用它的transact和binder驱动交互，transact内部又调用了talkWithDriver实现，它一方面负责向binder驱动程序发送数据，又接收来自binder驱动程序的进程间通信请求。
+
+- ProcessState.h
+
+  ```cpp
+  class IPCThreadState;
+  
+  class ProcessState : public virtual RefBase
+  {
+  public:
+      // open打开设备/dev/binder
+      // 接着通过mmap映射到进程的地址空间，即请求binder驱动为进程分配内核缓冲区
+      static  sp<ProcessState>    self();
+      ...
+  private:
+      friend class IPCThreadState;
+      ...
+              int                 mDriverFD;
+              void*               mVMStart; // -> 内核缓冲区的用户地址
+  }
+  ```
+
+  ProcessState负责初始化Binder设备，即打开设备文件/dev/binder，以及将/dev/binder映射到进程的地址空间，该对象在进程范围内唯一。
