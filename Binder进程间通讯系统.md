@@ -415,7 +415,7 @@
   };
   ```
 
-  BnInterface和BpInterface都继承了BBinder，BBinder为binder本地对象提供了抽象的进程通信接口
+  BBinder为binder本地对象提供了抽象的进程通信接口
 
   - transcat
 
