@@ -79,10 +79,13 @@
 - Activity.dispatchTouchEvent()
 
   ```java
+  // 触摸屏事件调用，内核通过jni接口触发的
+  // MotionEvent是linux通过反射产生的
   public boolean dispatchTouchEvent(MotionEvent ev) {
       if (ev.getAction() == MotionEvent.ACTION_DOWN) {
           onUserInteraction();
       }
+    	// getWindow()得到PhoneWindow
       if (getWindow().superDispatchTouchEvent(ev)) {
           return true;
       }
