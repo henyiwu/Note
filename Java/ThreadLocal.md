@@ -11,9 +11,9 @@
   ```java
   public void set(T value) {
           Thread t = Thread.currentThread();
-          ThreadLocalMap map = getMap(t);
+          ThreadLocalMap map = getMap(t); // 1
           if (map != null)
-              map.set(this, value);
+              map.set(this, value); // 2
           else
               createMap(t, value);
       }

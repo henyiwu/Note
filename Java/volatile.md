@@ -1,3 +1,5 @@
+[toc]
+
 ## volatile
 
 - 例1
@@ -138,4 +140,36 @@
 
 - volatile怎么阻止乱序执行？
 
-  
+  内存屏障
+
+- jvm内存屏障
+
+  1. LoadLoad屏障
+
+     对于这样的语句Load;LoadLoad;Load2
+
+     在Load2以及后续读取操作的数据被访问前，要保证Load1要读取的数据被读取完毕
+
+  2. StoreStore屏障
+
+     对于这样的语句Store1;StoreStore;Store2
+
+     在Store2以及后续的写入操作执行前，保证Store1的写入操作对其他处理器可见
+
+  3. LoadStore屏障
+
+     对于这样的语句Load1;LoadStore;Store2
+
+     在Store2以及后续的写入操作被刷出前，保证Load1要读取的数据被处理完毕
+
+  4. StoreLoad屏障
+
+     对于这样的语句Store1;StoreLoad;Load2
+
+     在Load2以及后续的读取操作执行前，保证Store1的写入对所有处理器可见
+
+### volatile底层原理
+
+- cpu原语lock语句
+
+  锁住总线，只有某个cpu能进行内存读写，切读写完后，其他线程的cache失效。
